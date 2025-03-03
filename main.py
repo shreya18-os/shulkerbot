@@ -72,14 +72,15 @@ async def help(ctx):
 
 
             embed.add_field(name="<a:economy:1345373409659588661> **Economy**", 
-                            value="╭───────────⟡\n"
-                                  "│ <a:balance:1345373618070097982> `.balance`\n"
-                                  "│ <a:daily:1345377114223935519> `.daily`\n"
-                                  "│ <a:cf:1345374098427084922> `.cf <amount> <heads/tails> [X2 MONEY]`\n"
-                                  "│ <a:set:1345374633666416725> `.setbalance <user> <amount>`\n"
-                                  "│ <a:slots:1345374871734980608> `.slots <amount> [X5 MONEY]`\n"
-                                  "│ <:gcoin:1345375137100464168> `.give <user> <amount>`\n"
-                                  "╰───────────⟡", inline=False)
+                value="╭───────────⟡\n"
+                      "│ <a:balance:1345373618070097982> `.balance`\n"
+                      "│ <a:daily:1345377114223935519> `.daily`\n"
+                      "│ <a:cf:1345374098427084922> `.cf <amount> <heads/tails> [X2 MONEY]`\n"
+                      "│ <a:set:1345374633666416725> `.setbalance <user> <amount>`\n"
+                      "│ <a:slots:1345374871734980608> `.slots <amount> [X5 MONEY]`\n"
+                      "│ <:gcoin:1345375137100464168> `.give <user> <amount>`\n"
+                      "│ 🎲 `.dice <amount> <1-6> [X6 MONEY]`\n"
+                      "╰───────────⟡", inline=False)
 
 
             embed.add_field(name="<:fun:1345375490965245996> **Fun**", 
