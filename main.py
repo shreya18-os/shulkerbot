@@ -472,6 +472,52 @@ async def daily(ctx):
 
     await ctx.send(f"✅ {ctx.author.mention}, you claimed **100 coins**! Your new balance is **{balance} coins**.")
 
+@bot.command()
+async def dice(ctx, bet: int, guess: int):
+    user_id = ctx.author.id
+
+    if bet <= 0:
+        return await ctx.send("❌ Bet must be greater than 0!")
+    if guess < 1 or guess > 6:
+        return await ctx.send("❌ You must guess a number between 1 and 6!")
+
+    # Connect to the database
+    conn = sqlite3.connect("economy.db")
+    c = conn.cursor()
+
+    # Ensure economy table exists
+    c.execute("CREATE TABLE IF NOT EXISTS economy (user_id INTEGER PRIMARY KEY, balance INTEGER)")
+
+    # Fetch user balance
+    c.execute("SELECT balance FROM economy WHERE user_id=?", (user_id,))
+    data = c.fetchone()
+
+    if data:
+        balance = data[0]
+    else:
+        balance = 0  # Default balance if user is new
+        c.execute("INSERT INTO economy (user_id, balance) VALUES (?, ?)", (user_id, balance))
+
+    if balance < bet:
+        conn.close()
+        return await ctx.send("❌ You don't have enough coins to bet that much!")
+
+    # Roll the dice (1 to 6)
+    roll = random.randint(1, 6)
+
+    if guess == roll:
+        winnings = bet * 6
+        balance += winnings
+        await ctx.send(f"🎲 You rolled `{roll}`! You won `{winnings}` coins! 🤑")
+    else:
+        balance -= bet
+        await ctx.send(f"🎲 You rolled `{roll}`. You lost `{bet}` coins! 😢")
+
+    # Update balance in the database
+    c.execute("UPDATE economy SET balance=? WHERE user_id=?", (balance, user_id))
+    conn.commit()
+    conn.close()
+    
 @bot.command(aliases=["bal"])
 async def balance(ctx, user: discord.Member = None):
     if user is None:
