@@ -858,27 +858,41 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandOnCooldown):
         remaining = round(error.retry_after, 2)
         await ctx.send(f"⏳ Command on cooldown! Try again in {remaining} seconds.", delete_after=5)
+    
     elif isinstance(error, commands.CheckFailure):
+        # Only show this if it's NOT an owner-only command (avoiding duplication)
+        owner_only_commands = ["kick", "ban", "unban", "purge", "dm", "giveaway"]
+        if ctx.command and ctx.command.name in owner_only_commands:
+            return  # Ignore, since we handle these separately
         await ctx.send(f"❌ You **don't have permission** to use this command, {ctx.author.mention}!")
+
     elif isinstance(error, commands.MissingRequiredArgument):
         await ctx.send("⚠️ Missing arguments! Please provide all required inputs.")
+    
+    else:
+        await ctx.send(f"⚠️ An error occurred: `{error}`")
 
+# Owner-Only Command Error Handling (To avoid duplicates)
 @kick.error
 @ban.error
 @unban.error
 @purge.error
 @dm.error
 @giveaway.error
-async def command_error(ctx, error):
+async def owner_command_error(ctx, error):
     if isinstance(error, commands.CheckFailure):
         await ctx.send(f"❌ You **don't have permission** to use this command, {ctx.author.mention}!")
+    
     elif isinstance(error, commands.MissingRequiredArgument):
         await ctx.send("⚠️ Missing arguments! Please provide all required inputs.")
+    
     elif isinstance(error, commands.CommandOnCooldown):
         remaining = round(error.retry_after, 2)
         await ctx.send(f"⏳ Command on cooldown! Try again in {remaining} seconds.", delete_after=5)
+
     else:
         await ctx.send(f"⚠️ An error occurred: `{error}`")
+
 
 # Run the Bot
 TOKEN = os.getenv("TOKEN")
