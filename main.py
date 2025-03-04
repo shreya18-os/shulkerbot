@@ -925,6 +925,136 @@ else:
         print("⚠️ Discord may have temporarily blocked your bot due to rate limits.")
         print("⚠️ Consider waiting 24 hours before trying again.")
 
+# Black Jack
+
+@bot.command()
+async def blackjack(ctx, bet: int):
+    user_id = ctx.author.id
+    conn = sqlite3.connect("economy.db")
+    c = conn.cursor()
+
+    # Ensure the economy table exists
+    c.execute("CREATE TABLE IF NOT EXISTS economy (user_id INTEGER PRIMARY KEY, balance INTEGER, last_daily INTEGER)")
+    
+    # Fetch user balance
+    c.execute("SELECT balance FROM economy WHERE user_id=?", (user_id,))
+    data = c.fetchone()
+
+    if not data:
+        await ctx.send("❌ You don't have an account! Use `.daily` to start.")
+        conn.close()
+        return
+
+    balance = data[0]
+
+    if bet <= 0:
+        await ctx.send("❌ Your bet must be greater than 0!")
+        conn.close()
+        return
+
+    if bet > balance:
+        await ctx.send("❌ You don't have enough coins to bet that much!")
+        conn.close()
+        return
+
+    # Card deck and values
+    cards = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
+    values = {"A": 11, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, "10": 10, "J": 10, "Q": 10, "K": 10}
+
+    def draw_card():
+        return random.choice(cards)
+
+    def calculate_total(hand):
+        total = sum(values[card] for card in hand)
+        aces = hand.count("A")
+        while total > 21 and aces:
+            total -= 10
+            aces -= 1
+        return total
+
+    player_hand = [draw_card(), draw_card()]
+    dealer_hand = [draw_card(), draw_card()]
+
+    player_total = calculate_total(player_hand)
+    dealer_total = calculate_total(dealer_hand)
+
+    emojis = {"hit": "🎯", "stand": "🛑"}
+
+    embed = discord.Embed(title="🃏 Blackjack!", color=discord.Color.green())
+    embed.add_field(name="Your Hand", value=f"`{player_hand}` (**{player_total}**)", inline=False)
+    embed.add_field(name="Dealer's Hand", value=f"`[{dealer_hand[0]}, '?']`", inline=False)
+    embed.set_footer(text="React below: 🎯 = Hit | 🛑 = Stand")
+
+    message = await ctx.send(embed=embed)
+    await message.add_reaction(emojis["hit"])
+    await message.add_reaction(emojis["stand"])
+
+    # Check for immediate blackjack (2.5x payout)
+    if player_total == 21:
+        winnings = int(bet * 2.5)
+        balance += winnings
+        c.execute("UPDATE economy SET balance=? WHERE user_id=?", (balance, user_id))
+        conn.commit()
+        conn.close()
+        
+        embed.description = f"🎉 **Blackjack!** `{ctx.author.name}` wins **{winnings} coins!** 🏆"
+        embed.set_field_at(0, name="Your Hand", value=f"`{player_hand}` (**{player_total}**)", inline=False)
+        embed.set_field_at(1, name="Dealer's Hand", value=f"`{dealer_hand}` (**{dealer_total}**)", inline=False)
+        await message.edit(embed=embed)
+        return
+
+    def check(reaction, user):
+        return user == ctx.author and str(reaction.emoji) in emojis.values() and reaction.message.id == message.id
+
+    while player_total < 21:
+        try:
+            reaction, user = await bot.wait_for("reaction_add", timeout=30.0, check=check)
+        except asyncio.TimeoutError:
+            embed.description = "⏳ **You took too long!** Game ended."
+            await message.edit(embed=embed)
+            return
+
+        if str(reaction.emoji) == emojis["hit"]:
+            player_hand.append(draw_card())
+            player_total = calculate_total(player_hand)
+            embed.set_field_at(0, name="Your Hand", value=f"`{player_hand}` (**{player_total}**)", inline=False)
+            await message.edit(embed=embed)
+
+            if player_total > 21:
+                balance -= bet
+                c.execute("UPDATE economy SET balance=? WHERE user_id=?", (balance, user_id))
+                conn.commit()
+                conn.close()
+                
+                embed.description = f"💥 **Bust!** You lost **{bet} coins!** ❌"
+                await message.edit(embed=embed)
+                return
+        else:
+            break
+
+    while dealer_total < 17:
+        dealer_hand.append(draw_card())
+        dealer_total = calculate_total(dealer_hand)
+
+    if dealer_total > 21 or player_total > dealer_total:
+        winnings = bet * 2
+        balance += winnings
+        result = f"🎉 **You win!** `{winnings} coins!` 🏆"
+    elif player_total < dealer_total:
+        balance -= bet
+        result = f"❌ **You lost!** `{bet} coins` deducted."
+    else:
+        result = "😐 **It's a tie!** Your bet is returned."
+
+    c.execute("UPDATE economy SET balance=? WHERE user_id=?", (balance, user_id))
+    conn.commit()
+    conn.close()
+
+    embed.set_field_at(1, name="Dealer's Hand", value=f"`{dealer_hand}` (**{dealer_total}**)", inline=False)
+    embed.description = result
+    await message.edit(embed=embed)
+
+
 @bot.command()
 async def slotsstats(ctx, user: discord.Member = None):
     """View slots statistics for a user"""
