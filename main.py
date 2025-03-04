@@ -1,6 +1,7 @@
 import discord
 import os
 import random
+import traceback
 import requests
 import json
 import sqlite3
@@ -1001,7 +1002,6 @@ async def meme(ctx):
 
 
 
-# Error Handling
 @bot.event
 async def on_command_error(ctx, error):
     if hasattr(ctx.command, 'on_error'):
@@ -1018,7 +1018,9 @@ async def on_command_error(ctx, error):
         await ctx.send(f"❌ You don't have permission to use this command, {ctx.author.mention}!")
 
     else:
-        await ctx.send(f"⚠️ An unexpected error occurred: `{error}`")
+        # Log the error without sending it to the user
+        print(f"Ignored error in command {ctx.command}: {error}")
+        traceback.print_exc()  # Prints detailed error traceback for debugging
 
 
 
