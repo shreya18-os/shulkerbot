@@ -335,6 +335,33 @@ def init_economy_db():
 # Initialize economy database at startup
 init_economy_db()
 
+@bot.command()
+async def top(ctx):
+    """Show the top 10 users with the highest coins."""
+    conn = sqlite3.connect("economy.db")
+    c = conn.cursor()
+
+    # Fetch the top 10 users sorted by balance (highest first)
+    c.execute("SELECT user_id, balance FROM economy ORDER BY balance DESC LIMIT 10")
+    top_users = c.fetchall()
+    conn.close()
+
+    if not top_users:
+        await ctx.send("🚫 No users found in the leaderboard!")
+        return
+
+    # Create leaderboard embed
+    embed = discord.Embed(title="🏆 **Top 10 Coin Leaderboard**", color=discord.Color.gold())
+    
+    for rank, (user_id, balance) in enumerate(top_users, start=1):
+        user = bot.get_user(user_id)  # Fetch user object
+        username = user.name if user else f"Unknown User ({user_id})"
+        embed.add_field(name=f"#{rank} {username}", value=f"💰 {balance} coins", inline=False)
+
+    embed.set_footer(text="🔥 Keep grinding to reach the top!")
+
+    await ctx.send(embed=embed)
+
 #slots
 
 @bot.command()
