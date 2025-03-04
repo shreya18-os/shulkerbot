@@ -226,29 +226,6 @@ def get_invite_data(user_id):
     return result if result else (0, 0, 0, 0)
 
 @bot.command()
-async def invites(ctx, user: discord.Member = None):
-    """Check a user's detailed invite stats from the database."""
-    if user is None:
-        user = ctx.author  # Default to the command caller
-
-    # Fetch invite data from the database
-    stats = get_invite_data(user.id)
-
-    # Prepare the stats dictionary
-    stats_dict = {"joins": stats[0], "leaves": stats[1], "fakes": stats[2], "rejoins": stats[3]}
-    net_invites = stats_dict["joins"] - (stats_dict["leaves"] + stats_dict["fakes"]) + stats_dict["rejoins"]
-
-    embed = discord.Embed(title="📨 **Invite Log**", color=discord.Color.gold())
-    embed.add_field(name="**User**", value=f"**{user.name}** has **{net_invites}** invites", inline=False)
-    embed.add_field(name="✅ **Joins**", value=f"{stats_dict['joins']}", inline=True)
-    embed.add_field(name="❌ **Left**", value=f"{stats_dict['leaves']}", inline=True)
-    embed.add_field(name="⚠ **Fake**", value=f"{stats_dict['fakes']}", inline=True)
-    embed.add_field(name="🔄 **Rejoins**", value=f"{stats_dict['rejoins']}", inline=True)
-    embed.set_footer(text="🔥 Invite tracking by SHULKER BOT")
-
-    await ctx.send(embed=embed)
-
-@bot.command()
 @commands.has_permissions(administrator=True)
 async def resetinvites(ctx, user: discord.Member):
     """Reset a specific user's invite stats in the database."""
