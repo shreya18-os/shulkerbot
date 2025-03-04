@@ -15,10 +15,10 @@ ALLOWED_USERS = [1101467683083530331, 987654321098765432]
 def is_allowed_user():
     async def predicate(ctx):
         if ctx.author.id not in ALLOWED_USERS:
-            await ctx.send("❌ You don't have permission to use this command!")
-            return False
+            raise commands.CheckFailure  # Just raise the error, don't send a message
         return True
     return commands.check(predicate)
+
 
 
 intents = discord.Intents.default()
@@ -855,22 +855,22 @@ async def meme(ctx):
 # Error Handling
 @bot.event
 async def on_command_error(ctx, error):
+    if hasattr(ctx.command, 'on_error'):
+        return  # Prevents duplicate error handling
+
     if isinstance(error, commands.CommandOnCooldown):
         remaining = round(error.retry_after, 2)
         await ctx.send(f"⏳ Command on cooldown! Try again in {remaining} seconds.", delete_after=5)
-    
+
     elif isinstance(error, commands.MissingRequiredArgument):
         await ctx.send("⚠️ Missing arguments! Please provide all required inputs.")
-    
+
     elif isinstance(error, commands.CheckFailure):
-        # Prevent duplicate messages
-        if ctx.command and ctx.command.has_error_handler():
-            return  # Stops execution if command has its own handler
-        
         await ctx.send(f"❌ You don't have permission to use this command, {ctx.author.mention}!")
-    
+
     else:
         await ctx.send(f"⚠️ An unexpected error occurred: `{error}`")
+
 
 
 
