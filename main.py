@@ -631,10 +631,10 @@ async def setbalance(ctx, member: discord.Member, amount: int):
 
 @bot.command()
 async def cf(ctx, amount: int, choice: str):
-    """Coinflip command with a flipping animation and balance updates."""
+    """Coinflip command: Bet an amount and choose heads or tails."""
     choice = choice.lower()
     if choice not in ["heads", "tails"]:
-        return await ctx.send("⚠️ **Invalid choice!** Please choose `heads` or `tails`.")
+        return await ctx.send("⚠️ Invalid choice! Please choose heads or tails.")
 
     user_id = ctx.author.id
 
@@ -642,10 +642,10 @@ async def cf(ctx, amount: int, choice: str):
     conn = sqlite3.connect("economy.db")
     cursor = conn.cursor()
 
-    # Ensure economy table exists
+    # Ensure table exists
     cursor.execute("CREATE TABLE IF NOT EXISTS economy (user_id INTEGER PRIMARY KEY, balance INTEGER, last_daily INTEGER)")
 
-    # Fetch user balance
+    # Fetch user's balance
     cursor.execute("SELECT balance FROM economy WHERE user_id = ?", (user_id,))
     result = cursor.fetchone()
 
@@ -660,34 +660,22 @@ async def cf(ctx, amount: int, choice: str):
     # Check if user has enough balance
     if amount > balance or amount <= 0:
         conn.close()
-        return await ctx.send("❌ **You don't have enough coins to bet that amount!**")
+        return await ctx.send("❌ You don't have enough coins to bet that amount!")
 
-    # **Step 1: Send "Flipping Coin..." Message**
-    msg = await ctx.send("<a:cf:1345374098427084922> **Flipping the coin...**")
-
-    # **Step 2: Wait 2 seconds for suspense**
-    await asyncio.sleep(2)
-
-    # **Step 3: Determine Coin Flip Result**
+    # Flip the coin
     flip_result = random.choice(["heads", "tails"])
 
     if choice == flip_result:
         new_balance = balance + amount  # Win, add the bet amount
-        result_message = f"<:congrats:1345385894454100019> **You won {amount} coins!** 🎉"
+        await ctx.send(f"<:congrats:1345385894454100019> You won **{amount}** coins! <a:cf:1345374098427084922> The coin landed on **{flip_result}**! New balance: **{new_balance}** coins.")
     else:
         new_balance = balance - amount  # Lose, deduct the bet
-        result_message = f"<:sad:1345385609421656104> **You lost {amount} coins.** 😢"
+        await ctx.send(f"<:sad:1345385609421656104> You lost **{amount}** coins. <a:cf:1345374098427084922> The coin landed on **{flip_result}**. New balance: **{new_balance}** coins.")
 
-    # Update user's balance in database
+    # Update the user's balance in the database
     cursor.execute("UPDATE economy SET balance = ? WHERE user_id = ?", (new_balance, user_id))
     conn.commit()
     conn.close()
-
-    # **Step 4: Edit Original Message with Final Result**
-    await msg.edit(content=f"🪙 **The coin landed on `{flip_result}`!**\n{result_message}\n💰 **New Balance:** `{new_balance} coins`")
-
-
-
 # say and embed
 
 @bot.command()
