@@ -80,6 +80,7 @@ async def help(ctx):
                       "│ <a:slots:1345374871734980608> `.slots <amount> [X5 MONEY]`\n"
                       "│ <:gcoin:1345375137100464168> `.give <user> <amount>`\n"
                       "│ <a:dice:1345375794490507274> `.dice <amount> <1-6> [X6 MONEY]`\n"
+                      " -# PROTIP: INVITE MEMBERS FOR COINS!\n"
                       "╰───────────⟡", inline=False)
 
 
