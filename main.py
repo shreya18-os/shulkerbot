@@ -225,17 +225,6 @@ def get_invite_data(user_id):
 
     return result if result else (0, 0, 0, 0)
 
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def resetinvites(ctx, user: discord.Member):
-    """Reset a specific user's invite stats in the database."""
-    conn = sqlite3.connect("invites.db")
-    c = conn.cursor()
-    c.execute("UPDATE invites SET joins = 0, leaves = 0, fakes = 0, rejoins = 0 WHERE user_id = ?", (user.id,))
-    conn.commit()
-    conn.close()
-
-    await ctx.send(f"✅ Successfully reset invites for **{user.name}**!")
 
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -565,21 +554,15 @@ async def invites(ctx, user: discord.Member = None):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def resetinvites(ctx, user: discord.Member):
-    """Reset a specific user's invite stats in the database."""
+    """Reset a specific user's invite stats in the database without affecting their coins."""
     conn = sqlite3.connect("invites.db")
     c = conn.cursor()
     c.execute("UPDATE invites SET joins = 0, leaves = 0, fakes = 0, rejoins = 0 WHERE user_id = ?", (user.id,))
     conn.commit()
     conn.close()
 
-    # Reset economy coins for that user
-    conn = sqlite3.connect("economy.db")
-    c = conn.cursor()
-    c.execute("UPDATE economy SET balance = 0 WHERE user_id = ?", (user.id,))
-    conn.commit()
-    conn.close()
+    await ctx.send(f"✅ Successfully reset invites for **{user.name}**!")
 
-    await ctx.send(f"✅ Successfully reset invites & coins for **{user.name}**!")
 
 @bot.command()
 @commands.has_permissions(administrator=True)
