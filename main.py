@@ -864,11 +864,14 @@ async def on_command_error(ctx, error):
     
     elif isinstance(error, commands.CheckFailure):
         # Prevent duplicate messages
-        if not ctx.command.has_error_handler():
-            await ctx.send(f"❌ You **don't have permission** to use this command, {ctx.author.mention}!")
-
+        if ctx.command and ctx.command.has_error_handler():
+            return  # Stops execution if command has its own handler
+        
+        await ctx.send(f"❌ You don't have permission to use this command, {ctx.author.mention}!")
+    
     else:
         await ctx.send(f"⚠️ An unexpected error occurred: `{error}`")
+
 
 
 
