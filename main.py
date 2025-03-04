@@ -80,7 +80,9 @@ async def help(ctx):
                       "│ <a:slots:1345374871734980608> `.slots <amount> [X5 MONEY]`\n"
                       "│ <:gcoin:1345375137100464168> `.give <user> <amount>`\n"
                       "│ <a:dice:1345375794490507274> `.dice <amount> <1-6> [X6 MONEY]`\n"
+                      "│ <a:trophy:1345379999999999999> `.top` (Leaderboard of richest users)\n"
                       "╰───────────⟡", inline=False)
+
 
 
             embed.add_field(name="<:fun:1345375490965245996> **Fun**", 
@@ -733,6 +735,40 @@ async def setbalance(ctx, member: discord.Member, amount: int):
 
                             if new_balance:
                                 print(f"DEBUG: {member.name}'s new balance is {new_balance[0]}")
+
+#daily command
+
+@bot.command()
+async def daily(ctx):
+    user_id = ctx.author.id
+    conn = sqlite3.connect("economy.db")
+    c = conn.cursor()
+
+    # Create table if not exists
+    c.execute("CREATE TABLE IF NOT EXISTS economy (user_id INTEGER PRIMARY KEY, balance INTEGER, last_daily INTEGER)")
+
+    # Fetch user data
+    c.execute("SELECT balance, last_daily FROM economy WHERE user_id=?", (user_id,))
+    data = c.fetchone()
+
+    now = int(datetime.utcnow().timestamp())  # Current time in seconds
+
+    if data:
+        balance, last_daily = data
+        if now - last_daily < 86400:  # 24 hours
+            await ctx.send("❌ You have already claimed your daily reward! Come back later.")
+            conn.close()
+            return
+        balance += 100  # Add 100 coins
+        c.execute("UPDATE economy SET balance=?, last_daily=? WHERE user_id=?", (balance, now, user_id))
+    else:
+        balance = 100  # First time claiming
+        c.execute("INSERT INTO economy (user_id, balance, last_daily) VALUES (?, ?, ?)", (user_id, balance, now))
+
+    conn.commit()
+    conn.close()
+
+    await ctx.send(f"✅ {ctx.author.mention}, you claimed **100 coins**! Your new balance is **{balance} coins**.")
 
 
 
