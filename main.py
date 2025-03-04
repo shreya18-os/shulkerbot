@@ -441,37 +441,187 @@ async def slots(ctx, bet_amount: int):
 
 #Economy Commands
 
-@bot.command()
-async def daily(ctx):
-    user_id = ctx.author.id
-    conn = sqlite3.connect("economy.db")
+
+# Initialize invite tracking database
+conn = sqlite3.connect("invites.db")
+c = conn.cursor()
+
+c.execute('''CREATE TABLE IF NOT EXISTS invites (
+             user_id INTEGER PRIMARY KEY,
+             joins INTEGER DEFAULT 0,
+             leaves INTEGER DEFAULT 0,
+             fakes INTEGER DEFAULT 0,
+             rejoins INTEGER DEFAULT 0)''')
+
+conn.commit()
+conn.close()
+
+# Initialize economy database
+conn = sqlite3.connect("economy.db")
+c = conn.cursor()
+
+c.execute('''CREATE TABLE IF NOT EXISTS economy (
+             user_id INTEGER PRIMARY KEY,
+             balance INTEGER DEFAULT 0,
+             last_daily INTEGER DEFAULT 0)''')
+
+conn.commit()
+conn.close()
+
+# Function to update invite stats
+def update_invite_data(user_id, column):
+    conn = sqlite3.connect("invites.db")
     c = conn.cursor()
 
-    # Create table if not exists
-    c.execute("CREATE TABLE IF NOT EXISTS economy (user_id INTEGER PRIMARY KEY, balance INTEGER, last_daily INTEGER)")
+    # Ensure user exists in the database
+    c.execute("INSERT OR IGNORE INTO invites (user_id) VALUES (?)", (user_id,))
 
-    # Fetch user data
-    c.execute("SELECT balance, last_daily FROM economy WHERE user_id=?", (user_id,))
-    data = c.fetchone()
-
-    now = int(datetime.utcnow().timestamp())  # Current time in seconds
-
-    if data:
-        balance, last_daily = data
-        if now - last_daily < 86400:  # 24 hours
-            await ctx.send("❌ You have already claimed your daily reward! Come back later.")
-            conn.close()
-            return
-        balance += 100  # Add 100 coins
-        c.execute("UPDATE economy SET balance=?, last_daily=? WHERE user_id=?", (balance, now, user_id))
-    else:
-        balance = 100  # First time claiming
-        c.execute("INSERT INTO economy (user_id, balance, last_daily) VALUES (?, ?, ?)", (user_id, balance, now))
+    # Update the relevant column
+    c.execute(f"UPDATE invites SET {column} = {column} + 1 WHERE user_id = ?", (user_id,))
 
     conn.commit()
     conn.close()
 
-    await ctx.send(f"✅ {ctx.author.mention}, you claimed **100 coins**! Your new balance is **{balance} coins**.")
+# Function to update inviter's coins
+def add_coins(user_id, amount):
+    conn = sqlite3.connect("economy.db")
+    c = conn.cursor()
+
+    # Ensure user exists in the economy database
+    c.execute("INSERT OR IGNORE INTO economy (user_id, balance) VALUES (?, 0)", (user_id,))
+
+    # Add coins
+    c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
+
+    conn.commit()
+    conn.close()
+
+# Function to get invite stats
+def get_invite_data(user_id):
+    conn = sqlite3.connect("invites.db")
+    c = conn.cursor()
+    c.execute("SELECT joins, leaves, fakes, rejoins FROM invites WHERE user_id = ?", (user_id,))
+    result = c.fetchone()
+    conn.close()
+
+    return result if result else (0, 0, 0, 0)
+
+# Function to find inviter
+async def find_inviter(member):
+    invites = await member.guild.invites()
+    
+    for invite in invites:
+        if invite.uses > 0:
+            return invite.inviter  # Return the user who created the invite
+
+    return None  # No inviter found
+
+@bot.event
+async def on_member_join(member):
+    """Triggered when a member joins."""
+    inviter = await find_inviter(member)
+
+    if inviter:
+        update_invite_data(inviter.id, "joins")  # Increase invite count
+        add_coins(inviter.id, 500)  # Give inviter 500 coins
+
+        await inviter.send(f"🎉 You invited {member.name} and earned **500 coins**!")
+
+    # Check if it's a rejoin
+    conn = sqlite3.connect("invites.db")
+    c = conn.cursor()
+    c.execute("SELECT joins FROM invites WHERE user_id = ?", (member.id,))
+    result = c.fetchone()
+    conn.close()
+
+    if result and result[0] > 0:
+        update_invite_data(member.id, "rejoins")  # Count as rejoin
+
+@bot.event
+async def on_member_remove(member):
+    """Triggered when a member leaves."""
+    update_invite_data(member.id, "leaves")
+
+    # Check if user should be marked as a fake
+    conn = sqlite3.connect("invites.db")
+    c = conn.cursor()
+    c.execute("SELECT joins, leaves FROM invites WHERE user_id = ?", (member.id,))
+    result = c.fetchone()
+    conn.close()
+
+    if result and result[0] == result[1]:  
+        update_invite_data(member.id, "fakes")  # Mark as fake
+
+@bot.command()
+async def invites(ctx, user: discord.Member = None):
+    """Check a user's detailed invite stats from the database."""
+    if user is None:
+        user = ctx.author  # Default to the command caller
+
+    # Fetch invite data from the database
+    stats = get_invite_data(user.id)
+
+    # Prepare the stats dictionary
+    stats_dict = {"joins": stats[0], "leaves": stats[1], "fakes": stats[2], "rejoins": stats[3]}
+    net_invites = stats_dict["joins"] - (stats_dict["leaves"] + stats_dict["fakes"]) + stats_dict["rejoins"]
+
+    # Fetch user's balance
+    conn = sqlite3.connect("economy.db")
+    c = conn.cursor()
+    c.execute("SELECT balance FROM economy WHERE user_id = ?", (user.id,))
+    balance = c.fetchone()
+    conn.close()
+
+    balance = balance[0] if balance else 0  # Default to 0 if no record
+
+    embed = discord.Embed(title="📨 **Invite Log**", color=discord.Color.gold())
+    embed.add_field(name="**User**", value=f"**{user.name}** has **{net_invites}** invites", inline=False)
+    embed.add_field(name="✅ **Joins**", value=f"{stats_dict['joins']}", inline=True)
+    embed.add_field(name="❌ **Left**", value=f"{stats_dict['leaves']}", inline=True)
+    embed.add_field(name="⚠ **Fake**", value=f"{stats_dict['fakes']}", inline=True)
+    embed.add_field(name="🔄 **Rejoins**", value=f"{stats_dict['rejoins']}", inline=True)
+    embed.add_field(name="💰 **Coins Earned**", value=f"{balance} 🪙", inline=False)
+    embed.set_footer(text="🔥 Invite tracking by SHULKER BOT")
+
+    await ctx.send(embed=embed)
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def resetinvites(ctx, user: discord.Member):
+    """Reset a specific user's invite stats in the database."""
+    conn = sqlite3.connect("invites.db")
+    c = conn.cursor()
+    c.execute("UPDATE invites SET joins = 0, leaves = 0, fakes = 0, rejoins = 0 WHERE user_id = ?", (user.id,))
+    conn.commit()
+    conn.close()
+
+    # Reset economy coins for that user
+    conn = sqlite3.connect("economy.db")
+    c = conn.cursor()
+    c.execute("UPDATE economy SET balance = 0 WHERE user_id = ?", (user.id,))
+    conn.commit()
+    conn.close()
+
+    await ctx.send(f"✅ Successfully reset invites & coins for **{user.name}**!")
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def resetwholeserverinvite(ctx):
+    """Reset invite stats for all users in the database."""
+    conn = sqlite3.connect("invites.db")
+    c = conn.cursor()
+    c.execute("DELETE FROM invites")  # Clears all invite data
+    conn.commit()
+    conn.close()
+
+    # Reset economy coins for all users
+    conn = sqlite3.connect("economy.db")
+    c = conn.cursor()
+    c.execute("UPDATE economy SET balance = 0")  # Reset all balances
+    conn.commit()
+    conn.close()
+
+    await ctx.send("✅ Successfully reset **all invite records & coins** for the server!")
 
 @bot.command()
 async def dice(ctx, bet: int, guess: int):
