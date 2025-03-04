@@ -856,7 +856,6 @@ async def meme(ctx):
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandOnCooldown):
-        # Handle rate limit for commands
         remaining = round(error.retry_after, 2)
         await ctx.send(f"⏳ Command on cooldown! Try again in {remaining} seconds.", delete_after=5)
     elif isinstance(error, commands.CheckFailure):
@@ -871,11 +870,15 @@ async def on_command_error(ctx, error):
 @dm.error
 @giveaway.error
 async def command_error(ctx, error):
-    if not isinstance(error, commands.CommandOnCooldown):
-        if isinstance(error, commands.CheckFailure):
-            await ctx.send(f"❌ You **don't have permission** to use this command, {ctx.author.mention}!")
-        elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send("⚠️ Missing arguments! Please provide all required inputs.")
+    if isinstance(error, commands.CheckFailure):
+        await ctx.send(f"❌ You **don't have permission** to use this command, {ctx.author.mention}!")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("⚠️ Missing arguments! Please provide all required inputs.")
+    elif isinstance(error, commands.CommandOnCooldown):
+        remaining = round(error.retry_after, 2)
+        await ctx.send(f"⏳ Command on cooldown! Try again in {remaining} seconds.", delete_after=5)
+    else:
+        await ctx.send(f"⚠️ An error occurred: `{error}`")
 
 # Run the Bot
 TOKEN = os.getenv("TOKEN")
