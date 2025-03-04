@@ -659,21 +659,21 @@ async def give(ctx, member: discord.Member, amount: int):
     c.execute("UPDATE economy SET balance = balance - ? WHERE user_id = ?", (amount, giver_id))
     c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (amount, receiver_id))
 
-    conn.commit()  # **Ensure changes are saved**
+    conn.commit()
     conn.close()
 
-    await ctx.send(f"💸 {ctx.author.mention} gave {member.mention} **{amount} coins**!")
+    # Get the current date and time
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    # **Extra Debugging: Verify the database update**
-    conn = sqlite3.connect("economy.db")
-    c = conn.cursor()
-    c.execute("SELECT balance FROM economy WHERE user_id=?", (receiver_id,))
-    new_balance = c.fetchone()
-    conn.close()
+    # Create embed for transaction log
+    embed = discord.Embed(title="💸 **Transaction Log**", color=discord.Color.green())
+    embed.add_field(name="📤 **Payer**", value=f"{ctx.author.mention} (`{ctx.author.name}`)", inline=True)
+    embed.add_field(name="📥 **Receiver**", value=f"{member.mention} (`{member.name}`)", inline=True)
+    embed.add_field(name="💰 **Amount**", value=f"{amount} 🪙", inline=False)
+    embed.add_field(name="📅 **Date & Time**", value=f"`{now}`", inline=False)
+    embed.set_footer(text="🔥 Secure transactions powered by SHULKER BOT")
 
-    if new_balance:
-        print(f"DEBUG: {member.name}'s new balance is {new_balance[0]}")
-
+    await ctx.send(embed=embed)
 
 
 
