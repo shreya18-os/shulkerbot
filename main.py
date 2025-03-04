@@ -226,19 +226,6 @@ def get_invite_data(user_id):
     return result if result else (0, 0, 0, 0)
 
 
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def resetwholeserverinvite(ctx):
-    """Reset invite stats for all users in the database."""
-    conn = sqlite3.connect("invites.db")
-    c = conn.cursor()
-    c.execute("DELETE FROM invites")  # Clears all invite data
-    conn.commit()
-    conn.close()
-
-    await ctx.send("✅ Successfully reset **all invite records** for the server!")
-
-
 # Add this auto-responder below on_ready()
 @bot.event
 async def on_message(message):
@@ -567,21 +554,15 @@ async def resetinvites(ctx, user: discord.Member):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def resetwholeserverinvite(ctx):
-    """Reset invite stats for all users in the database."""
+    """Reset invite stats for all users in the database without affecting their coins."""
     conn = sqlite3.connect("invites.db")
     c = conn.cursor()
     c.execute("DELETE FROM invites")  # Clears all invite data
     conn.commit()
     conn.close()
 
-    # Reset economy coins for all users
-    conn = sqlite3.connect("economy.db")
-    c = conn.cursor()
-    c.execute("UPDATE economy SET balance = 0")  # Reset all balances
-    conn.commit()
-    conn.close()
+    await ctx.send("✅ Successfully reset **all invite records** for the server!")
 
-    await ctx.send("✅ Successfully reset **all invite records & coins** for the server!")
 
 @bot.command()
 async def dice(ctx, bet: int, guess: int):
