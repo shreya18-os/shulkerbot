@@ -507,7 +507,7 @@ async def on_member_remove(member):
 
 @bot.command()
 async def invites(ctx, user: discord.Member = None):
-    """Check a user's detailed invite stats from the database."""
+    """Check a user's detailed invite stats from the database and show only coins earned from inviting."""
     if user is None:
         user = ctx.author  # Default to the command caller
 
@@ -518,14 +518,8 @@ async def invites(ctx, user: discord.Member = None):
     stats_dict = {"joins": stats[0], "leaves": stats[1], "fakes": stats[2], "rejoins": stats[3]}
     net_invites = stats_dict["joins"] - (stats_dict["leaves"] + stats_dict["fakes"]) + stats_dict["rejoins"]
 
-    # Fetch user's balance
-    conn = sqlite3.connect("economy.db")
-    c = conn.cursor()
-    c.execute("SELECT balance FROM economy WHERE user_id = ?", (user.id,))
-    balance = c.fetchone()
-    conn.close()
-
-    balance = balance[0] if balance else 0  # Default to 0 if no record
+    # Calculate coins earned from inviting (assuming 500 coins per valid invite)
+    coins_from_invites = net_invites * 500 if net_invites > 0 else 0
 
     embed = discord.Embed(title="📨 **Invite Log**", color=discord.Color.gold())
     embed.add_field(name="**User**", value=f"**{user.name}** has **{net_invites}** invites", inline=False)
@@ -533,10 +527,11 @@ async def invites(ctx, user: discord.Member = None):
     embed.add_field(name="❌ **Left**", value=f"{stats_dict['leaves']}", inline=True)
     embed.add_field(name="⚠ **Fake**", value=f"{stats_dict['fakes']}", inline=True)
     embed.add_field(name="🔄 **Rejoins**", value=f"{stats_dict['rejoins']}", inline=True)
-    embed.add_field(name="💰 **Coins Earned**", value=f"{balance} 🪙", inline=False)
+    embed.add_field(name="💰 **Coins Earned (Invites Only)**", value=f"{coins_from_invites} 🪙", inline=False)
     embed.set_footer(text="🔥 Invite tracking by SHULKER BOT")
 
     await ctx.send(embed=embed)
+
 
 @bot.command()
 @commands.has_permissions(administrator=True)
