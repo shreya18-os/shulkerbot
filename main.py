@@ -534,7 +534,7 @@ async def balance(ctx, user: discord.Member = None):
 
     balance = data[0] if data else 0  # Default balance is 0
 
-    await ctx.send(f"💰 {user.mention} has **{balance} coins**.")
+    await ctx.send(f"<a:balance:1345373618070097982> {user.mention} has **{balance} coins**.")
 
     # **Debugging: Print the actual balance**
     print(f"DEBUG: {user.name}'s balance is {balance}")
