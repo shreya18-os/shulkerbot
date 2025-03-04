@@ -73,7 +73,7 @@ async def help(ctx):
 
             embed.add_field(name="<a:economy:1345373409659588661> **Economy**", 
                 value="╭───────────⟡\n"
-                      "│ <a:balance:1345373618070097982> `.balance`\n"
+                      "│ <a:balance:1345373618070097982> `.balance / .bal`\n"
                       "│ <a:daily:1345377114223935519> `.daily`\n"
                       "│ <a:cf:1345374098427084922> `.cf <amount> <heads/tails> [X2 MONEY]`\n"
                       "│ <a:set:1345374633666416725> `.setbalance <user> <amount>`\n"
