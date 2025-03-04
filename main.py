@@ -855,18 +855,24 @@ async def meme(ctx):
 # Error Handling
 @bot.event
 async def on_command_error(ctx, error):
+    if hasattr(ctx.command, "on_error"):  # Ignore commands with their own error handlers
+        return
+
+    error = getattr(error, "original", error)  # Get the original error if wrapped
+
     if isinstance(error, commands.CommandOnCooldown):
         remaining = round(error.retry_after, 2)
         await ctx.send(f"⏳ Command on cooldown! Try again in {remaining} seconds.", delete_after=5)
-    
+
     elif isinstance(error, commands.CheckFailure):
         await ctx.send(f"❌ You **don't have permission** to use this command, {ctx.author.mention}!")
-    
+
     elif isinstance(error, commands.MissingRequiredArgument):
         await ctx.send("⚠️ Missing arguments! Please provide all required inputs.")
-    
+
     else:
         await ctx.send(f"⚠️ An error occurred: `{error}`")
+
 
 
 # Owner-Only Command Error Handling (To avoid duplicates)
