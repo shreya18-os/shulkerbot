@@ -95,7 +95,7 @@ async def help(ctx):
             embed.add_field(name="<a:gift1:1345383111877202021> **Giveaway**", 
                             value="╭───────────⟡\n"
                                   "│ <a:giveaway21:1345378924481347584> `.giveaway <duration_in_seconds> <prize>`\n"
-                                  "│ <:refresh:1345379475638063115> `.rerollss <message_id>`\n"
+                                  "│ <:refresh:1345379475638063115> `.reroll <message_id>`\n"
                                   "│ <:gend:1345379981672316998> `.gend <message_id>`\n"
                                   "╰───────────⟡", inline=False)
 
