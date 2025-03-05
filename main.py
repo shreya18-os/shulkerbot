@@ -159,33 +159,107 @@ async def serverinfo(ctx):
 
     await ctx.send(embed=embed)
 
-# button testing
+# blackjack testing
+
+class BlackjackButton(discord.ui.View):
+    def __init__(self, player, bet):
+        super().__init__()
+        self.player = player
+        self.bet = bet
+        self.deck = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11] * 4
+        random.shuffle(self.deck)
+        self.player_hand = [self.draw_card(), self.draw_card()]
+        self.dealer_hand = [self.draw_card(), self.draw_card()]
+
+    def draw_card(self):
+        return self.deck.pop()
+
+    def calculate_score(self, hand):
+        score = sum(hand)
+        aces = hand.count(11)
+        while score > 21 and aces:
+            score -= 10
+            aces -= 1
+        return score
+
+    async def update_embed(self, interaction):
+        embed = discord.Embed(title=f"🃏 Blackjack - {self.player.name}", color=discord.Color.gold())
+        embed.add_field(name="Your Hand", value=f"{self.player_hand} (Total: {self.calculate_score(self.player_hand)})", inline=False)
+        embed.add_field(name="Dealer's Hand", value=f"[{self.dealer_hand[0]}, ?]", inline=False)
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Hit", style=discord.ButtonStyle.green)
+    async def hit(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.player:
+            return await interaction.response.send_message("You are not playing this game!", ephemeral=True)
+        
+        self.player_hand.append(self.draw_card())
+        player_score = self.calculate_score(self.player_hand)
+        
+        if player_score > 21:
+            await self.end_game(interaction, "You busted! Dealer wins.", False)
+        else:
+            await self.update_embed(interaction)
+
+    @discord.ui.button(label="Stand", style=discord.ButtonStyle.red)
+    async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.player:
+            return await interaction.response.send_message("You are not playing this game!", ephemeral=True)
+        
+        while self.calculate_score(self.dealer_hand) < 17:
+            self.dealer_hand.append(self.draw_card())
+        
+        player_score = self.calculate_score(self.player_hand)
+        dealer_score = self.calculate_score(self.dealer_hand)
+        
+        if dealer_score > 21 or player_score > dealer_score:
+            await self.end_game(interaction, "Congratulations! You win!", True)
+        elif player_score < dealer_score:
+            await self.end_game(interaction, "Dealer wins!", False)
+        else:
+            await self.end_game(interaction, "It's a tie!", None)
+
+    async def end_game(self, interaction, result, player_won):
+        self.clear_items()
+        embed = discord.Embed(title=f"🃏 Blackjack - {self.player.name}", color=discord.Color.gold())
+        embed.add_field(name="Your Hand", value=f"{self.player_hand} (Total: {self.calculate_score(self.player_hand)})", inline=False)
+        embed.add_field(name="Dealer's Hand", value=f"{self.dealer_hand} (Total: {self.calculate_score(self.dealer_hand)})", inline=False)
+        embed.add_field(name="Result", value=result, inline=False)
+        await interaction.response.edit_message(embed=embed, view=None)
+
+        conn = sqlite3.connect("economy.db")
+        c = conn.cursor()
+        if player_won:
+            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet * 2, self.player.id))
+        elif player_won is False:
+            pass  # Coins were already deducted
+        else:
+            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet, self.player.id))
+        conn.commit()
+        conn.close()
 
 @bot.command()
-async def button(ctx):
-    """Send a message with interactive buttons"""
-    view = View()
-
-    # Creating Buttons
-    button1 = Button(label="Click Me!", style=discord.ButtonStyle.green)
-    button2 = Button(label="Don't Click Me!", style=discord.ButtonStyle.red)
-
-    # Button Interaction
-    async def button1_callback(interaction: discord.Interaction):
-        await interaction.response.send_message("You clicked the green button!", ephemeral=True)
-
-    async def button2_callback(interaction: discord.Interaction):
-        await interaction.response.send_message("You clicked the red button!", ephemeral=True)
-
-    button1.callback = button1_callback
-    button2.callback = button2_callback
-
-    # Add buttons to the view
-    view.add_item(button1)
-    view.add_item(button2)
-
-    await ctx.send("Click a button:", view=view)
-
+async def blackjack(ctx, bet: int):
+    user_id = ctx.author.id
+    conn = sqlite3.connect("economy.db")
+    c = conn.cursor()
+    c.execute("SELECT balance FROM economy WHERE user_id=?", (user_id,))
+    balance = c.fetchone()
+    
+    if not balance or balance[0] < bet:
+        await ctx.send("❌ You don't have enough coins to bet!")
+        return
+    
+    c.execute("UPDATE economy SET balance = balance - ? WHERE user_id = ?", (bet, user_id))
+    conn.commit()
+    conn.close()
+    
+    view = BlackjackButton(ctx.author, bet)
+    embed = discord.Embed(title=f"🃏 Blackjack - {ctx.author.name}", color=discord.Color.gold())
+    embed.add_field(name="Your Hand", value=f"{view.player_hand} (Total: {view.calculate_score(view.player_hand)})", inline=False)
+    embed.add_field(name="Dealer's Hand", value=f"[{view.dealer_hand[0]}, ?]", inline=False)
+    
+    await ctx.send(embed=embed, view=view)
 
 # Store invite data before restarts
 old_invites = {}
