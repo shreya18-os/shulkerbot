@@ -54,7 +54,7 @@ async def on_ready():
     # Wait before updating presence to avoid issues
     await asyncio.sleep(1)
 
-    activity = discord.Streaming(name="SHULKER SMP <a:sword:1346760299688230922>", url="https://www.twitch.tv/minecraft")
+    activity = discord.Streaming(name="SHULKER SMP ⚔", url="https://www.twitch.tv/minecraft")
     await bot.change_presence(status=discord.Status.idle, activity=activity)
 
     print("✅ Status should now be updated!")
