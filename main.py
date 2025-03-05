@@ -4,6 +4,7 @@ import random
 import traceback
 import requests
 import json
+from discord.ui import Button, View
 import sqlite3
 import asyncio
 from discord.ext import commands
@@ -158,7 +159,32 @@ async def serverinfo(ctx):
 
     await ctx.send(embed=embed)
 
+# button testing
 
+@bot.command()
+async def button(ctx):
+    """Send a message with interactive buttons"""
+    view = View()
+
+    # Creating Buttons
+    button1 = Button(label="Click Me!", style=discord.ButtonStyle.green)
+    button2 = Button(label="Don't Click Me!", style=discord.ButtonStyle.red)
+
+    # Button Interaction
+    async def button1_callback(interaction: discord.Interaction):
+        await interaction.response.send_message("You clicked the green button!", ephemeral=True)
+
+    async def button2_callback(interaction: discord.Interaction):
+        await interaction.response.send_message("You clicked the red button!", ephemeral=True)
+
+    button1.callback = button1_callback
+    button2.callback = button2_callback
+
+    # Add buttons to the view
+    view.add_item(button1)
+    view.add_item(button2)
+
+    await ctx.send("Click a button:", view=view)
 
 
 # Store invite data before restarts
