@@ -234,11 +234,13 @@ async def on_member_join(member):
         else:
             update_invite_data(correct_inviter.id, "joins")  # First-time join
             add_coins(correct_inviter.id, 500)  # Reward inviter with 500 coins
+            await correct_inviter.send(f"🎉 You invited {member.name} and earned **500 coins**!")
 
     else:
         print(f"⚠️ Could not determine who invited {member.name}")
 
     await member.send("Welcome to the server!")
+
 @bot.event
 async def on_member_remove(member):
     """Triggered when a member leaves."""
@@ -536,16 +538,6 @@ async def find_inviter(member):
 
     return None  # No inviter found
 
-@bot.event
-async def on_member_join(member):
-    """Triggered when a member joins."""
-    inviter = await find_inviter(member)
-
-    if inviter:
-        update_invite_data(inviter.id, "joins")  # Increase invite count
-        add_coins(inviter.id, 500)  # Give inviter 500 coins
-
-        await inviter.send(f"🎉 You invited {member.name} and earned **500 coins**!")
 
     # Check if it's a rejoin
     conn = sqlite3.connect("invites.db")
