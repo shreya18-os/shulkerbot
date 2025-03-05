@@ -42,13 +42,21 @@ bot = commands.Bot(
 
 @bot.event
 async def on_ready():
-    global bot  # Ensures bot is globally recognized
+    global bot  
     await bot.wait_until_ready()
 
     print(f"✅ SHULKER BOT is online as {bot.user}!")
 
+    # Fetch invites for all guilds the bot is in
+    for guild in bot.guilds:
+        old_invites[guild.id] = {invite.code: invite.uses for invite in await guild.invites()}
+
+    # Wait before updating presence to avoid issues
+    await asyncio.sleep(1)
+
     activity = discord.Streaming(name="SHULKER SMP ⚔️", url="https://www.twitch.tv/minecraft")
     await bot.change_presence(status=discord.Status.idle, activity=activity)
+
     print("✅ Status should now be updated!")
 
 
@@ -156,13 +164,6 @@ async def serverinfo(ctx):
 # Store invite data before restarts
 old_invites = {}
 
-@bot.event
-async def on_ready():
-    print(f"✅ {bot.user} is online!")
-    
-    # Fetch invites for all guilds the bot is in
-    for guild in bot.guilds:
-        old_invites[guild.id] = {invite.code: invite.uses for invite in await guild.invites()}
 
 # Initialize database
 conn = sqlite3.connect("invites.db")
