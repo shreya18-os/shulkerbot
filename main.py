@@ -153,20 +153,34 @@ async def serverinfo(ctx):
 
 
 
-# Dictionary to manually track invites (This should be replaced with a database in a real bot)
-invite_data = {}
+# Store invite data before restarts
+old_invites = {}
+
+@bot.event
+async def on_ready():
+    print(f"✅ {bot.user} is online!")
+    
+    # Fetch invites for all guilds the bot is in
+    for guild in bot.guilds:
+        old_invites[guild.id] = {invite.code: invite.uses for invite in await guild.invites()}
+
 # Initialize database
 conn = sqlite3.connect("invites.db")
 c = conn.cursor()
-
-# Create table if it doesn't exist
 c.execute('''CREATE TABLE IF NOT EXISTS invites (
              user_id INTEGER PRIMARY KEY,
              joins INTEGER DEFAULT 0,
              leaves INTEGER DEFAULT 0,
              fakes INTEGER DEFAULT 0,
              rejoins INTEGER DEFAULT 0)''')
+conn.commit()
+conn.close()
 
+conn = sqlite3.connect("economy.db")
+c = conn.cursor()
+c.execute('''CREATE TABLE IF NOT EXISTS economy (
+             user_id INTEGER PRIMARY KEY,
+             balance INTEGER DEFAULT 0)''')
 conn.commit()
 conn.close()
 
@@ -174,34 +188,56 @@ conn.close()
 def update_invite_data(user_id, column):
     conn = sqlite3.connect("invites.db")
     c = conn.cursor()
-
-    # Ensure the user exists in the database
-    c.execute("INSERT OR IGNORE INTO invites (user_id) VALUES (?)", (user_id,))
-
-    # Update the relevant column
+    c.execute("INSERT OR IGNORE INTO invites (user_id, joins, leaves, fakes, rejoins) VALUES (?, 0, 0, 0, 0)", (user_id,))
     c.execute(f"UPDATE invites SET {column} = {column} + 1 WHERE user_id = ?", (user_id,))
+    conn.commit()
+    conn.close()
 
+# Function to add coins to inviter
+def add_coins(user_id, amount):
+    conn = sqlite3.connect("economy.db")
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO economy (user_id, balance) VALUES (?, 0)", (user_id,))
+    c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
     conn.commit()
     conn.close()
 
 @bot.event
 async def on_member_join(member):
     """Triggered when a member joins."""
-    conn = sqlite3.connect("invites.db")
-    c = conn.cursor()
+    guild = member.guild
+    invites_before = old_invites.get(guild.id, {})  # Fetch stored invites
+    invites_after = await guild.invites()  # Fetch updated invites
+    old_invites[guild.id] = {invite.code: invite.uses for invite in invites_after}  # Update stored invites
 
-    # Check if the user has joined before
-    c.execute("SELECT joins FROM invites WHERE user_id = ?", (member.id,))
-    result = c.fetchone()
-    conn.close()
+    correct_inviter = None
 
-    if result and result[0] > 0:
-        update_invite_data(member.id, "rejoins")  # Count as rejoin
+    # Find the invite that was used
+    for invite in invites_after:
+        if invite.code in invites_before and invite.uses > invites_before[invite.code]:
+            correct_inviter = invite.inviter
+            break
+
+    if correct_inviter:
+        print(f"📢 {member.name} joined using {correct_inviter.name}'s invite!")
+
+        # Check if this is a rejoin or new join
+        conn = sqlite3.connect("invites.db")
+        c = conn.cursor()
+        c.execute("SELECT joins FROM invites WHERE user_id = ?", (member.id,))
+        result = c.fetchone()
+        conn.close()
+
+        if result and result[0] > 0:
+            update_invite_data(correct_inviter.id, "rejoins")  # Count as rejoin
+        else:
+            update_invite_data(correct_inviter.id, "joins")  # First-time join
+            add_coins(correct_inviter.id, 500)  # Reward inviter with 500 coins
+
     else:
-        update_invite_data(member.id, "joins")  # First-time join
+        print(f"⚠️ Could not determine who invited {member.name}")
 
     await member.send("Welcome to the server!")
-
 @bot.event
 async def on_member_remove(member):
     """Triggered when a member leaves."""
@@ -537,27 +573,40 @@ async def on_member_remove(member):
 
 @bot.command()
 async def invites(ctx, user: discord.Member = None):
-    """Check a user's detailed invite stats from the database and show only coins earned from inviting."""
+    """Check a user's detailed invite stats from the database."""
     if user is None:
         user = ctx.author  # Default to the command caller
 
     # Fetch invite data from the database
-    stats = get_invite_data(user.id)
+    conn = sqlite3.connect("invites.db")
+    c = conn.cursor()
+    c.execute("SELECT joins, leaves, fakes, rejoins FROM invites WHERE user_id = ?", (user.id,))
+    stats = c.fetchone()
+    conn.close()
 
-    # Prepare the stats dictionary
-    stats_dict = {"joins": stats[0], "leaves": stats[1], "fakes": stats[2], "rejoins": stats[3]}
-    net_invites = stats_dict["joins"] - (stats_dict["leaves"] + stats_dict["fakes"]) + stats_dict["rejoins"]
+    if not stats:
+        stats = (0, 0, 0, 0)  # Default values if user has no invites
 
-    # Calculate coins earned from inviting (assuming 500 coins per valid invite)
-    coins_from_invites = net_invites * 500 if net_invites > 0 else 0
+    joins, leaves, fakes, rejoins = stats
+    net_invites = joins - (leaves + fakes) + rejoins  # Net invites
+
+    # Fetch coins earned only from inviting
+    conn = sqlite3.connect("economy.db")
+    c = conn.cursor()
+    c.execute("SELECT balance FROM economy WHERE user_id = ?", (user.id,))
+    balance = c.fetchone()
+    conn.close()
+
+    balance = balance[0] if balance else 0  # Default to 0 if no record
+    coins_from_invites = joins * 500  # Since each invite gives 500 coins
 
     embed = discord.Embed(title="📨 **Invite Log**", color=discord.Color.gold())
     embed.add_field(name="**User**", value=f"**{user.name}** has **{net_invites}** invites", inline=False)
-    embed.add_field(name="✅ **Joins**", value=f"{stats_dict['joins']}", inline=True)
-    embed.add_field(name="❌ **Left**", value=f"{stats_dict['leaves']}", inline=True)
-    embed.add_field(name="⚠ **Fake**", value=f"{stats_dict['fakes']}", inline=True)
-    embed.add_field(name="🔄 **Rejoins**", value=f"{stats_dict['rejoins']}", inline=True)
-    embed.add_field(name="💰 **Coins Earned (Invites Only)**", value=f"{coins_from_invites} 🪙", inline=False)
+    embed.add_field(name="✅ **Joins**", value=f"{joins}", inline=True)
+    embed.add_field(name="❌ **Left**", value=f"{leaves}", inline=True)
+    embed.add_field(name="⚠ **Fake**", value=f"{fakes}", inline=True)
+    embed.add_field(name="🔄 **Rejoins**", value=f"{rejoins}", inline=True)
+    embed.add_field(name="💰 **Coins Earned from Invites**", value=f"{coins_from_invites} 🪙", inline=False)
     embed.set_footer(text="🔥 Invite tracking by SHULKER BOT")
 
     await ctx.send(embed=embed)
