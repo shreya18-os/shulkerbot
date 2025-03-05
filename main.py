@@ -795,8 +795,14 @@ async def daily(ctx):
     conn = sqlite3.connect("economy.db")
     c = conn.cursor()
 
-    # Create table if not exists
-    c.execute("CREATE TABLE IF NOT EXISTS economy (user_id INTEGER PRIMARY KEY, balance INTEGER, last_daily INTEGER)")
+    # Create the table if it doesn't exist
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS economy (
+            user_id INTEGER PRIMARY KEY,
+            balance INTEGER DEFAULT 0,
+            last_daily INTEGER DEFAULT 0
+        )
+    """)
 
     # Fetch user data
     c.execute("SELECT balance, last_daily FROM economy WHERE user_id=?", (user_id,))
@@ -806,14 +812,21 @@ async def daily(ctx):
 
     if data:
         balance, last_daily = data
-        if now - last_daily < 86400:  # 24 hours
-            await ctx.send("❌ You have already claimed your daily reward! Come back later.")
+        if last_daily is None:
+            last_daily = 0  # Handle possible NoneType error
+
+        remaining_time = 86400 - (now - last_daily)
+        if remaining_time > 0:  # If 24 hours haven't passed
+            hours, remainder = divmod(remaining_time, 3600)
+            minutes, _ = divmod(remainder, 60)
+            await ctx.send(f"❌ You already claimed your daily reward! Try again in **{int(hours)}h {int(minutes)}m**.")
             conn.close()
             return
+        
         balance += 100  # Add 100 coins
         c.execute("UPDATE economy SET balance=?, last_daily=? WHERE user_id=?", (balance, now, user_id))
     else:
-        balance = 100  # First time claiming
+        balance = 100  # First-time claim
         c.execute("INSERT INTO economy (user_id, balance, last_daily) VALUES (?, ?, ?)", (user_id, balance, now))
 
     conn.commit()
