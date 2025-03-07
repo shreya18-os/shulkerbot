@@ -563,6 +563,28 @@ async def slots(ctx, bet_amount: int):
     conn.commit()
     conn.close()
 
+#dm all command
+
+OWNER_ID = 1101467683083530331  # Replace with your actual Discord ID
+
+@bot.command()
+async def dmall(ctx, *, message: str):
+    """DMs all server members with the given message (Restricted to Owner ID)."""
+    if ctx.author.id != OWNER_ID:
+        await ctx.send("❌ You are not authorized to use this command!")
+        return
+
+    members = ctx.guild.members
+    failed = 0
+
+    for member in members:
+        try:
+            await member.send(message)
+        except discord.Forbidden:
+            failed += 1  # Counts failed DMs due to privacy settings
+
+    await ctx.send(f"✅ Message sent to all members! (Failed to send to {failed} members due to DMs being closed.)")
+
 #Economy Commands
 
 
