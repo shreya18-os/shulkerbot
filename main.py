@@ -174,7 +174,6 @@ class BlackjackButton(discord.ui.View):
         random.shuffle(self.deck)
         self.player_hand = [self.draw_card(), self.draw_card()]
         self.dealer_hand = [self.draw_card(), self.draw_card()]
-        self.game_over = False  # Prevents multiple clicks after game ends
 
     def draw_card(self):
         return self.deck.pop()
@@ -195,12 +194,12 @@ class BlackjackButton(discord.ui.View):
 
     @discord.ui.button(label="Hit", style=discord.ButtonStyle.green)
     async def hit(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.game_over or interaction.user != self.player:
+        if interaction.user != self.player:
             return await interaction.response.send_message("You are not playing this game!", ephemeral=True)
-
+        
         self.player_hand.append(self.draw_card())
         player_score = self.calculate_score(self.player_hand)
-
+        
         if player_score > 21:
             await self.end_game(interaction, "You busted! Dealer wins.", False)
         else:
@@ -208,15 +207,15 @@ class BlackjackButton(discord.ui.View):
 
     @discord.ui.button(label="Stand", style=discord.ButtonStyle.red)
     async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.game_over or interaction.user != self.player:
+        if interaction.user != self.player:
             return await interaction.response.send_message("You are not playing this game!", ephemeral=True)
-
+        
         while self.calculate_score(self.dealer_hand) < 17:
             self.dealer_hand.append(self.draw_card())
-
+        
         player_score = self.calculate_score(self.player_hand)
         dealer_score = self.calculate_score(self.dealer_hand)
-
+        
         if dealer_score > 21 or player_score > dealer_score:
             await self.end_game(interaction, "Congratulations! You win!", True)
         elif player_score < dealer_score:
@@ -225,7 +224,6 @@ class BlackjackButton(discord.ui.View):
             await self.end_game(interaction, "It's a tie!", None)
 
     async def end_game(self, interaction, result, player_won):
-        self.game_over = True  # Prevents further clicks after game ends
         self.clear_items()
         embed = discord.Embed(title=f"🃏 Blackjack - {self.player.name}", color=discord.Color.gold())
         embed.add_field(name="Your Hand", value=f"{self.player_hand} (Total: {self.calculate_score(self.player_hand)})", inline=False)
@@ -233,15 +231,17 @@ class BlackjackButton(discord.ui.View):
         embed.add_field(name="Result", value=result, inline=False)
         await interaction.response.edit_message(embed=embed, view=None)
 
-        # Update database
         conn = sqlite3.connect("economy.db")
         c = conn.cursor()
         if player_won:
-            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet * 2, self.player.id))  # Win: Get double bet
-        elif player_won is None:
-            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet, self.player.id))  # Tie: Get bet back
+            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet * 2, self.player.id))  # **Changed from 3x to 2x**
+        elif player_won is False:
+            pass  # Coins were already deducted
+        else:
+            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet, self.player.id))  # Refund on tie
         conn.commit()
         conn.close()
+
 
 @bot.command()
 async def blackjack(ctx, bet: int):
