@@ -386,7 +386,7 @@ async def on_message(message):
         "who made you?": "I was created by **Shreyansh GameTube**! 🔥",
         "what is lifesteal smp?": "Lifesteal SMP is a Minecraft mode where you **steal hearts** from enemies! ❤️⚔️",
         "good bot": "Thank you! 😊",
-        "<@1101467683083530331>": "BRO PLAYING WITH DANGER!! :skull:",
+        "<@1101467683083530331>": "RESPECTIVELY, PLS DON'T PING THE **__OWNER!__**",
     }
 
     # Convert message to lowercase for case-insensitive matching
