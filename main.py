@@ -976,14 +976,20 @@ async def cf(ctx, amount: int, choice: str):
     cursor = conn.cursor()
 
     # Ensure table exists
-    cursor.execute("CREATE TABLE IF NOT EXISTS economy (user_id INTEGER PRIMARY KEY, balance INTEGER, last_daily INTEGER)")
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS economy (
+            user_id INTEGER PRIMARY KEY,
+            balance INTEGER DEFAULT 500,
+            last_daily INTEGER DEFAULT 0
+        )
+    """)
 
     # Fetch user's balance
     cursor.execute("SELECT balance FROM economy WHERE user_id = ?", (user_id,))
     result = cursor.fetchone()
 
-    # If user doesn't exist, insert them with a default balance of 500
     if result is None:
+        # If user doesn't exist, insert them with a starting balance of 500
         balance = 500
         cursor.execute("INSERT INTO economy (user_id, balance, last_daily) VALUES (?, ?, ?)", (user_id, balance, 0))
         conn.commit()
@@ -1009,6 +1015,7 @@ async def cf(ctx, amount: int, choice: str):
     cursor.execute("UPDATE economy SET balance = ? WHERE user_id = ?", (new_balance, user_id))
     conn.commit()
     conn.close()
+
 # say and embed
 
 @bot.command()
