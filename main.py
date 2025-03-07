@@ -174,6 +174,7 @@ class BlackjackButton(discord.ui.View):
         random.shuffle(self.deck)
         self.player_hand = [self.draw_card(), self.draw_card()]
         self.dealer_hand = [self.draw_card(), self.draw_card()]
+        self.game_over = False  # Prevents multiple clicks after game ends
 
     def draw_card(self):
         return self.deck.pop()
@@ -194,12 +195,12 @@ class BlackjackButton(discord.ui.View):
 
     @discord.ui.button(label="Hit", style=discord.ButtonStyle.green)
     async def hit(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user != self.player:
+        if self.game_over or interaction.user != self.player:
             return await interaction.response.send_message("You are not playing this game!", ephemeral=True)
-        
+
         self.player_hand.append(self.draw_card())
         player_score = self.calculate_score(self.player_hand)
-        
+
         if player_score > 21:
             await self.end_game(interaction, "You busted! Dealer wins.", False)
         else:
@@ -207,15 +208,15 @@ class BlackjackButton(discord.ui.View):
 
     @discord.ui.button(label="Stand", style=discord.ButtonStyle.red)
     async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user != self.player:
+        if self.game_over or interaction.user != self.player:
             return await interaction.response.send_message("You are not playing this game!", ephemeral=True)
-        
+
         while self.calculate_score(self.dealer_hand) < 17:
             self.dealer_hand.append(self.draw_card())
-        
+
         player_score = self.calculate_score(self.player_hand)
         dealer_score = self.calculate_score(self.dealer_hand)
-        
+
         if dealer_score > 21 or player_score > dealer_score:
             await self.end_game(interaction, "Congratulations! You win!", True)
         elif player_score < dealer_score:
@@ -224,6 +225,7 @@ class BlackjackButton(discord.ui.View):
             await self.end_game(interaction, "It's a tie!", None)
 
     async def end_game(self, interaction, result, player_won):
+        self.game_over = True  # Prevents further clicks after game ends
         self.clear_items()
         embed = discord.Embed(title=f"🃏 Blackjack - {self.player.name}", color=discord.Color.gold())
         embed.add_field(name="Your Hand", value=f"{self.player_hand} (Total: {self.calculate_score(self.player_hand)})", inline=False)
@@ -231,14 +233,13 @@ class BlackjackButton(discord.ui.View):
         embed.add_field(name="Result", value=result, inline=False)
         await interaction.response.edit_message(embed=embed, view=None)
 
+        # Update database
         conn = sqlite3.connect("economy.db")
         c = conn.cursor()
         if player_won:
-            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet * 2, self.player.id))
-        elif player_won is False:
-            pass  # Coins were already deducted
-        else:
-            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet, self.player.id))
+            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet * 2, self.player.id))  # Win: Get double bet
+        elif player_won is None:
+            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet, self.player.id))  # Tie: Get bet back
         conn.commit()
         conn.close()
 
@@ -247,23 +248,41 @@ async def blackjack(ctx, bet: int):
     user_id = ctx.author.id
     conn = sqlite3.connect("economy.db")
     c = conn.cursor()
+
+    # Ensure table exists
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS economy (
+            user_id INTEGER PRIMARY KEY,
+            balance INTEGER DEFAULT 500,
+            last_daily INTEGER DEFAULT 0
+        )
+    """)
+
+    # Fetch user's balance
     c.execute("SELECT balance FROM economy WHERE user_id=?", (user_id,))
-    balance = c.fetchone()
-    
-    if not balance or balance[0] < bet:
-        await ctx.send("❌ You don't have enough coins to bet!")
-        return
-    
-    c.execute("UPDATE economy SET balance = balance - ? WHERE user_id = ?", (bet, user_id))
-    conn.commit()
-    conn.close()
-    
+    result = c.fetchone()
+
+    if result is None:
+        balance = 500  # Default balance for new users
+        c.execute("INSERT INTO economy (user_id, balance, last_daily) VALUES (?, ?, ?)", (user_id, balance, 0))
+        conn.commit()
+    else:
+        balance = result[0]
+
+    # Check if user has enough balance
+    if balance < bet or bet <= 0:
+        conn.close()
+        return await ctx.send("❌ You don't have enough coins to bet!")
+
+    conn.close()  # Close DB here, we'll update it later after the game result.
+
     view = BlackjackButton(ctx.author, bet)
     embed = discord.Embed(title=f"🃏 Blackjack - {ctx.author.name}", color=discord.Color.gold())
     embed.add_field(name="Your Hand", value=f"{view.player_hand} (Total: {view.calculate_score(view.player_hand)})", inline=False)
     embed.add_field(name="Dealer's Hand", value=f"[{view.dealer_hand[0]}, ?]", inline=False)
-    
+
     await ctx.send(embed=embed, view=view)
+
 
 # Store invite data before restarts
 old_invites = {}
@@ -513,50 +532,80 @@ async def top(ctx):
 @bot.command()
 async def slots(ctx, bet_amount: int):
     """Play a slot machine game! Bet your coins and try your luck."""
+    
+    if bet_amount <= 0:
+        return await ctx.send("⚠️ Bet amount must be greater than zero!")
+
     user_id = ctx.author.id
 
     # Open Database Connection
     conn = sqlite3.connect("economy.db")
     cursor = conn.cursor()
 
-    # Ensure table exists
-    cursor.execute("CREATE TABLE IF NOT EXISTS economy (user_id INTEGER PRIMARY KEY, balance INTEGER, last_daily INTEGER)")
+    # Ensure economy table exists
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS economy (
+            user_id INTEGER PRIMARY KEY,
+            balance INTEGER DEFAULT 500,
+            last_daily INTEGER DEFAULT 0
+        )
+    """)
+
+    # Ensure slots history table exists
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS slots_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            bet_amount INTEGER,
+            result TEXT,
+            win_amount INTEGER,
+            timestamp INTEGER
+        )
+    """)
 
     # Fetch user's balance
     cursor.execute("SELECT balance FROM economy WHERE user_id = ?", (user_id,))
     result = cursor.fetchone()
 
-    # If user doesn't exist, insert them with a default balance of 500
     if result is None:
         balance = 500
         cursor.execute("INSERT INTO economy (user_id, balance, last_daily) VALUES (?, ?, ?)", (user_id, balance, 0))
         conn.commit()
         result = (balance,)
 
-    if result[0] < bet_amount:
+    balance = result[0]
+
+    if balance < bet_amount:
         conn.close()
         return await ctx.send("❌ You don't have enough coins to play!")
 
-    balance = result[0]
-    # Symbols for the slots
+    # Slot machine symbols
     symbols = ["🍎", "🍒", "🍋", "🍇", "🍊", "🍉", "🍓"]
     spin_result = [random.choice(symbols) for _ in range(3)]
 
-    await ctx.send(f"🎰 **{spin_result[0]} | {spin_result[1]} | {spin_result[2]}**")
+    # Send spin result
+    embed = discord.Embed(title="🎰 Slot Machine", color=discord.Color.gold())
+    embed.add_field(name="Spin Result", value=f"**{spin_result[0]} | {spin_result[1]} | {spin_result[2]}**", inline=False)
 
     win_amount = 0
-    if spin_result[0] == spin_result[1] == spin_result[2]:
+    if spin_result[0] == spin_result[1] == spin_result[2]:  # Jackpot (All 3 match)
         win_amount = bet_amount * 5
-        new_balance = balance + win_amount  # Win, 5x the bet
-        await ctx.send(f"🎉 You won {win_amount} coins! New balance: {new_balance} coins.")
-    else:
-        new_balance = balance - bet_amount  # Lose, deduct the bet
-        await ctx.send(f"😢 You lost {bet_amount} coins. New balance: {new_balance} coins.")
+        new_balance = balance + win_amount
+        embed.add_field(name="🎉 Jackpot!", value=f"You won **{win_amount} coins**!", inline=False)
+    elif spin_result[0] == spin_result[1] or spin_result[1] == spin_result[2]:  # Small win (2 match)
+        win_amount = bet_amount * 2
+        new_balance = balance + win_amount
+        embed.add_field(name="✨ Small Win!", value=f"You won **{win_amount} coins**!", inline=False)
+    else:  # Loss
+        new_balance = balance - bet_amount
+        embed.add_field(name="💀 You Lost!", value=f"You lost **{bet_amount} coins**.", inline=False)
 
-    # Update the user's balance in the database
+    embed.add_field(name="💰 New Balance", value=f"**{new_balance} coins**", inline=False)
+
+    # Update balance
     cursor.execute("UPDATE economy SET balance = ? WHERE user_id = ?", (new_balance, user_id))
 
-    # Record the slots game in history
+    # Save the game history
     current_time = int(datetime.utcnow().timestamp())
     result_str = f"{spin_result[0]}{spin_result[1]}{spin_result[2]}"
     cursor.execute("INSERT INTO slots_history (user_id, bet_amount, result, win_amount, timestamp) VALUES (?, ?, ?, ?, ?)", 
@@ -565,6 +614,7 @@ async def slots(ctx, bet_amount: int):
     conn.commit()
     conn.close()
 
+    await ctx.send(embed=embed)
 #dm all command
 
 OWNER_ID = 1101467683083530331  # Replace with your Discord ID
@@ -760,50 +810,47 @@ async def resetwholeserverinvite(ctx):
 
 
 @bot.command()
-async def dice(ctx, bet: int, guess: int):
+async def dice(ctx, bet: int):
+    """Roll a dice against the bot! Highest number wins."""
+    
     user_id = ctx.author.id
-
-    if bet <= 0:
-        return await ctx.send("❌ Bet must be greater than 0!")
-    if guess < 1 or guess > 6:
-        return await ctx.send("❌ You must guess a number between 1 and 6!")
-
-    # Connect to the database
     conn = sqlite3.connect("economy.db")
-    c = conn.cursor()
+    cursor = conn.cursor()
 
     # Ensure economy table exists
-    c.execute("CREATE TABLE IF NOT EXISTS economy (user_id INTEGER PRIMARY KEY, balance INTEGER)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS economy (user_id INTEGER PRIMARY KEY, balance INTEGER, last_daily INTEGER)")
 
-    # Fetch user balance
-    c.execute("SELECT balance FROM economy WHERE user_id=?", (user_id,))
-    data = c.fetchone()
+    # Fetch user's balance
+    cursor.execute("SELECT balance FROM economy WHERE user_id = ?", (user_id,))
+    result = cursor.fetchone()
 
-    if data:
-        balance = data[0]
-    else:
-        balance = 0  # Default balance if user is new
-        c.execute("INSERT INTO economy (user_id, balance) VALUES (?, ?)", (user_id, balance))
-
-    if balance < bet:
+    if result is None or result[0] < bet:
         conn.close()
-        return await ctx.send("❌ You don't have enough coins to bet that much!")
+        return await ctx.send("❌ You don't have enough coins to bet that amount!")
 
-    # Roll the dice (1 to 6)
-    roll = random.randint(1, 6)
+    player_roll = random.randint(1, 6)
+    bot_roll = random.randint(1, 6)
 
-    if guess == roll:
-        winnings = bet * 6
-        balance += winnings
-        await ctx.send(f"🎲 You rolled `{roll}`! You won `{winnings}` coins! 🤑")
+    embed = discord.Embed(title="🎲 Dice Game!", color=discord.Color.blue())
+    embed.add_field(name=f"{ctx.author.name}'s Roll", value=f"🎲 {player_roll}", inline=True)
+    embed.add_field(name="Bot's Roll", value=f"🎲 {bot_roll}", inline=True)
+
+    if player_roll > bot_roll:
+        embed.add_field(name="🎉 Result", value=f"You **won** {bet} coins!", inline=False)
+        new_balance = result[0] + bet
+    elif player_roll < bot_roll:
+        embed.add_field(name="💀 Result", value=f"You **lost** {bet} coins.", inline=False)
+        new_balance = result[0] - bet
     else:
-        balance -= bet
-        await ctx.send(f"🎲 You rolled `{roll}`. You lost `{bet}` coins! 😢")
+        embed.add_field(name="😲 Result", value="It's a **tie**! You keep your coins.", inline=False)
+        new_balance = result[0]  # No change in balance
 
-    # Update balance in the database
-    c.execute("UPDATE economy SET balance=? WHERE user_id=?", (balance, user_id))
+    # Update the database
+    cursor.execute("UPDATE economy SET balance = ? WHERE user_id = ?", (new_balance, user_id))
     conn.commit()
     conn.close()
+
+    await ctx.send(embed=embed)
     
 @bot.command(aliases=["bal"])
 async def balance(ctx, user: discord.Member = None):
@@ -828,53 +875,73 @@ async def balance(ctx, user: discord.Member = None):
 
 @bot.command()
 async def give(ctx, member: discord.Member, amount: int):
+    """Transfer coins to another player securely."""
+    
     if amount <= 0:
-        await ctx.send("❌ Amount must be greater than 0!")
-        return
+        return await ctx.send("❌ Amount must be greater than 0!")
 
     giver_id = ctx.author.id
     receiver_id = member.id
 
     if giver_id == receiver_id:
-        await ctx.send("❌ You cannot give coins to yourself!")
-        return
+        return await ctx.send("❌ You cannot give coins to yourself!")
 
     conn = sqlite3.connect("economy.db")
-    c = conn.cursor()
+    cursor = conn.cursor()
 
-    # Ensure both users exist in the database
-    c.execute("INSERT OR IGNORE INTO economy (user_id, balance, last_daily) VALUES (?, ?, ?)", (giver_id, 0, 0))
-    c.execute("INSERT OR IGNORE INTO economy (user_id, balance, last_daily) VALUES (?, ?, ?)", (receiver_id, 0, 0))
+    # Ensure economy table exists
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS economy (
+            user_id INTEGER PRIMARY KEY,
+            balance INTEGER DEFAULT 500,
+            last_daily INTEGER DEFAULT 0
+        )
+    """)
+
+    # Ensure transactions table exists
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            giver_id INTEGER,
+            receiver_id INTEGER,
+            amount INTEGER,
+            timestamp TEXT
+        )
+    """)
+
+    # Ensure both users exist in the economy table
+    cursor.execute("INSERT OR IGNORE INTO economy (user_id, balance, last_daily) VALUES (?, ?, ?)", (giver_id, 500, 0))
+    cursor.execute("INSERT OR IGNORE INTO economy (user_id, balance, last_daily) VALUES (?, ?, ?)", (receiver_id, 500, 0))
 
     # Fetch giver's balance
-    c.execute("SELECT balance FROM economy WHERE user_id=?", (giver_id,))
-    giver_balance = c.fetchone()
+    cursor.execute("SELECT balance FROM economy WHERE user_id=?", (giver_id,))
+    giver_balance = cursor.fetchone()[0]
 
-    if giver_balance is None or giver_balance[0] < amount:
-        await ctx.send("❌ You don't have enough coins to give!")
+    if giver_balance < amount:
         conn.close()
-        return
+        return await ctx.send("❌ You don't have enough coins to give!")
 
-    # Update balances
-    c.execute("UPDATE economy SET balance = balance - ? WHERE user_id = ?", (amount, giver_id))
-    c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (amount, receiver_id))
+    # Perform transaction
+    cursor.execute("UPDATE economy SET balance = balance - ? WHERE user_id = ?", (amount, giver_id))
+    cursor.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (amount, receiver_id))
+
+    # Log transaction
+    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    cursor.execute("INSERT INTO transactions (giver_id, receiver_id, amount, timestamp) VALUES (?, ?, ?, ?)", 
+                   (giver_id, receiver_id, amount, timestamp))
 
     conn.commit()
     conn.close()
 
-    # Get the current date and time
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-
     # Create embed for transaction log
-    embed = discord.Embed(title="💸 **Transaction Log**", color=discord.Color.green())
+    embed = discord.Embed(title="💸 **Transaction Successful!**", color=discord.Color.green())
     embed.add_field(name="📤 **Payer**", value=f"{ctx.author.mention} (`{ctx.author.name}`)", inline=True)
     embed.add_field(name="📥 **Receiver**", value=f"{member.mention} (`{member.name}`)", inline=True)
-    embed.add_field(name="💰 **Amount**", value=f"{amount} 🪙", inline=False)
-    embed.add_field(name="📅 **Date & Time**", value=f"`{now}`", inline=False)
+    embed.add_field(name="💰 **Amount**", value=f"`{amount} 🪙`", inline=False)
+    embed.add_field(name="📅 **Date & Time**", value=f"`{timestamp}`", inline=False)
     embed.set_footer(text="🔥 Secure transactions powered by SHULKER BOT")
 
     await ctx.send(embed=embed)
-
 
 
 @bot.command()
