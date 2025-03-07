@@ -70,15 +70,17 @@ async def help(ctx):
             embed.set_thumbnail(url=bot.user.avatar.url)
 
             embed.add_field(name="<:moderation:1345359844445524041> **Moderation**", 
-                            value="╭───────────⟡\n"
-                                  "│ <:kick:1345360371002900550> `.kick <user>`\n"
-                                  "│ <:ban:1345360761236488276> `.ban <user>`\n"
-                                  "│ <:unban:1345361440969724019> `.unban <user>`\n"
-                                  "│ <a:purge:1345361946324631644> `.purge <amount>`\n"
-                                  "│ <:dm:1345362152831320179> `.dm <user> <message>`\n"
-                                  "│ <:timeout:1345362419475546173> `.timeout <user> <duration_in_seconds> [reason]`\n"
-                                  "│ <:tmremove:1345362837610168321> `.removetimeout <user>`\n"
-                                  "╰───────────⟡", inline=False)
+                value="╭───────────⟡\n"
+                      "│ <:kick:1345360371002900550> `.kick <user>`\n"
+                      "│ <:ban:1345360761236488276> `.ban <user>`\n"
+                      "│ <:unban:1345361440969724019> `.unban <user>`\n"
+                      "│ <a:purge:1345361946324631644> `.purge <amount>`\n"
+                      "│ <:dm:1345362152831320179> `.dm <user> <message>`\n"
+                      "│ <:dm:1345362152831320179> `.dmall <message>`\n"
+                      "│ <:timeout:1345362419475546173> `.timeout <user> <duration_in_seconds> [reason]`\n"
+                      "│ <:tmremove:1345362837610168321> `.removetimeout <user>`\n"
+                      "╰───────────⟡", inline=False)
+
 
 
             embed.add_field(name="<a:economy:1345373409659588661> **Economy**", 
