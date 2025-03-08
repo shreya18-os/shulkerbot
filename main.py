@@ -91,7 +91,7 @@ async def help(ctx):
                       "│ <a:set:1345374633666416725> `.setbalance <user> <amount>`\n"
                       "│ <a:slots:1345374871734980608> `.slots <amount> [X5 MONEY]`\n"
                       "│ <:gcoin:1345375137100464168> `.give <user> <amount>`\n"
-                      "│ <a:dice:1345375794490507274> `.dice <amount> <1-6> [X6 MONEY]`\n"
+                      "│ <a:dice:1345375794490507274> `.dice <amount> [X2 MONEY]`\n"
                       "│ <a:trophy:1345379999999999999> `.top` (Leaderboard of richest users)\n"
                       "│ <:gcoin:1345375137100464168> `.blackjack <amount>` [Beat the dealer!]\n"
                       "╰───────────⟡", inline=False)
