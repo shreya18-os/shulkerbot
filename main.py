@@ -4,9 +4,10 @@ import random
 import traceback
 import requests
 import json
-from discord.ui import Button, View
 import sqlite3
 import asyncio
+from discord.ui import Button, View
+from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 
@@ -41,6 +42,8 @@ bot = commands.Bot(
 # Do not create session at module level
 # The session will be created properly by discord.py internally
 
+old_invites = {}  # Dictionary to track invites
+
 @bot.event
 async def on_ready():
     global bot  
@@ -50,11 +53,22 @@ async def on_ready():
 
     # Fetch invites for all guilds the bot is in
     for guild in bot.guilds:
-        old_invites[guild.id] = {invite.code: invite.uses for invite in await guild.invites()}
+        try:
+            old_invites[guild.id] = {invite.code: invite.uses for invite in await guild.invites()}
+        except discord.Forbidden:
+            print(f"❌ Missing permissions to fetch invites for {guild.name}.")
+
+    # Sync application (slash) commands
+    try:
+        await bot.tree.sync()
+        print("✅ Slash commands synced!")
+    except Exception as e:
+        print(f"❌ Failed to sync slash commands: {e}")
 
     # Wait before updating presence to avoid issues
     await asyncio.sleep(1)
 
+    # Set bot status to Streaming
     activity = discord.Streaming(name="SHULKER SMP ⚔", url="https://www.twitch.tv/minecraft")
     await bot.change_presence(status=discord.Status.idle, activity=activity)
 
@@ -62,6 +76,23 @@ async def on_ready():
 
 
 # Help Command
+# Define the /help command
+@bot.tree.command(name="help", description="Shows all available commands")
+async def help_command(interaction: discord.Interaction):
+    embed = discord.Embed(title="📖 **SHULKER BOT HELP MENU**", color=discord.Color.gold())
+
+    embed.add_field(name="💰 **ECONOMY COMMANDS**", value="> `/balance` - Check your balance.\n> `/daily` - Claim daily coins.\n> `/give <user> <amount>` - Give coins to another user.", inline=False)
+    
+    embed.add_field(name="🎰 **GAMBLING COMMANDS**", value="> `/blackjack <bet>` - Play Blackjack.\n> `/slots <bet>` - Spin the slot machine.\n> `/cf <amount> <heads/tails>` - Flip a coin.\n> `/dice <bet>` - Roll a dice.", inline=False)
+    
+    embed.add_field(name="⚔️ **MINECRAFT COMMANDS**", value="> `/mcstats <username>` - Get a player's Minecraft stats.\n> `/serverinfo` - Get details about Shulker SMP.", inline=False)
+    
+    embed.add_field(name="⚙️ **UTILITY COMMANDS**", value="> `/ping` - Check bot latency.\n> `/userinfo <user>` - Get user info.", inline=False)
+    
+    embed.set_footer(text="🔥 SHULKER BOT • Made for Shulker SMP", icon_url=interaction.client.user.avatar.url)
+    
+    await interaction.response.send_message(embed=embed)
+    
 # Help Command
 @bot.command()
 @commands.cooldown(1, 3, commands.BucketType.user)  # 1 use every 3 seconds per user
