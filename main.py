@@ -710,38 +710,23 @@ recordings_folder = "recordings"
 if not os.path.exists(recordings_folder):
     os.makedirs(recordings_folder)
 
+recordings_path = "/tmp/recordings/"
+os.makedirs(recordings_path, exist_ok=True)
+
 @bot.command()
 async def record(ctx):
-    global recording
-    if not ctx.voice_client:
-        await ctx.send("❌ I'm not in a voice channel!")
-        return
+    global recording, recorded_file, recording_sink
 
     if recording:
         await ctx.send("❌ Already recording!")
         return
 
+    recorded_file = os.path.join(recordings_path, f"recording_{int(time.time())}.wav")
     recording = True
-    timestamp = int(time.time())  # Unique filename
-    recorded_file = f"{recordings_folder}/recording_{timestamp}.wav"
+    recording_sink = await ctx.author.voice.channel.connect()
+    recording_sink.start_recording(recorded_file)
 
-    # Correct FFmpeg command to record VC audio
-    command = [
-        "ffmpeg",
-        "-y",  # Overwrite existing file
-        "-f", "s16le",  # PCM 16-bit little-endian
-        "-ar", "48000",  # 48kHz sample rate
-        "-ac", "2",  # 2 audio channels (stereo)
-        "-i", "default",  # Input device
-        recorded_file
-    ]
-
-    process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    
-    ctx.voice_client.recording_process = process
-    ctx.voice_client.recorded_file = recorded_file  # Store filename for later use
-    await ctx.send(f"🎙️ Recording started! File: {recorded_file}")
-
+    await ctx.send(f"🎙️ Recording started! File: `{recorded_file}`")
 @bot.command()
 async def stop(ctx):
     global recording, recorded_file, recording_sink
@@ -754,16 +739,18 @@ async def stop(ctx):
     recording = False
     recording_sink.vc.stop_recording()
 
-    # Debugging: Print the file path
-    file_exists = os.path.exists(recorded_file)
-    file_size = os.path.getsize(recorded_file) if file_exists else 0
-
-    if not file_exists or file_size == 0:
-        await ctx.send(f"⚠️ Recording stopped but file was NOT saved! Expected: `{recorded_file}`")
+    # Check if the file exists
+    if recorded_file and os.path.exists(recorded_file):
+        file_size = os.path.getsize(recorded_file)
+        await ctx.send(f"✅ Recording saved! File: `{recorded_file}` ({file_size} bytes)")
     else:
-        await ctx.send(f"✅ Recording saved! File path: `{recorded_file}`, Size: {file_size} bytes")
+        await ctx.send(f"⚠️ Recording stopped, but file was NOT found! Expected path: `{recorded_file}`")
 
-    # Reset variables
+    # List all files in the recordings folder
+    files = os.listdir("recordings")
+    await ctx.send(f"📂 Current recordings: {', '.join(files) if files else 'No files found!'}")
+
+    # Reset
     recorded_file = None
     recording_sink = None
 
