@@ -6,6 +6,7 @@ import requests
 import json
 import sqlite3
 import asyncio
+from discord import FFmpegPCMAudio
 from discord.ui import Button, View
 from discord import app_commands
 from discord.ext import commands
@@ -650,6 +651,54 @@ async def slots(ctx, bet_amount: int):
 
 OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
+
+#vc record
+
+@bot.command()
+async def join(ctx):
+    """Command to make bot join VC"""
+    if ctx.author.voice:
+        channel = ctx.author.voice.channel
+        vc = await channel.connect()
+        await ctx.send("Joined VC!")
+    else:
+        await ctx.send("You're not in a voice channel!")
+
+@bot.command()
+async def leave(ctx):
+    """Command to make bot leave VC"""
+    if ctx.voice_client:
+        await ctx.voice_client.disconnect()
+        await ctx.send("Left the voice channel.")
+    else:
+        await ctx.send("I'm not in a voice channel.")
+
+@bot.command()
+async def record(ctx):
+    """Command to start recording VC audio"""
+    if ctx.voice_client:
+        vc = ctx.voice_client
+        audio_sink = discord.sinks.WaveSink()  # Records in .wav format
+        vc.start_recording(audio_sink, finished_callback, ctx)  
+        await ctx.send("Recording started...")
+    else:
+        await ctx.send("I'm not in a voice channel!")
+
+async def finished_callback(sink, ctx):
+    """Callback to save & send the recorded audio"""
+    filename = f"recording-{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.wav"
+    sink.save(filename)
+
+    await ctx.send("Recording stopped! Here’s your file:", file=discord.File(filename))
+
+@bot.command()
+async def stop(ctx):
+    """Command to stop recording"""
+    if ctx.voice_client and ctx.voice_client.recording:
+        ctx.voice_client.stop_recording()
+        await ctx.send("Recording stopped.")
+    else:
+        await ctx.send("I'm not recording.")
 @bot.command()
 async def dmall(ctx, *, message: str = None):
     if ctx.author.id != OWNER_ID:
