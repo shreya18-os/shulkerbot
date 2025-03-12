@@ -679,18 +679,22 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
 #vc record
 
-recordings_folder = "recordings"
-os.makedirs(recordings_folder, exist_ok=True)  # Ensure the folder exists
-
+# Global recording state
 recording = False
 recorded_file = None
+recording_sink = None
+
+# Ensure the recordings folder exists
+os.makedirs("recordings", exist_ok=True)
 
 @bot.command()
 async def join(ctx):
     """Joins the voice channel."""
+    global recording
     if ctx.author.voice:
         channel = ctx.author.voice.channel
         await channel.connect()
+        recording = False  # Reset recording state on join
         await ctx.send(f"✅ Joined **{channel.name}**!")
     else:
         await ctx.send("❌ You must be in a voice channel!")
@@ -698,17 +702,18 @@ async def join(ctx):
 @bot.command()
 async def leave(ctx):
     """Leaves the voice channel."""
+    global recording
     if ctx.voice_client:
         await ctx.voice_client.disconnect()
+        recording = False  # Reset recording state on leave
         await ctx.send("👋 Left the voice channel!")
     else:
         await ctx.send("❌ I'm not in a voice channel!")
 
 @bot.command()
 async def record(ctx):
-    """Starts recording the voice channel."""
-    global recording, recorded_file
-
+    """Starts recording the voice channel using discord.sinks.WaveSink."""
+    global recording, recorded_file, recording_sink
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
@@ -718,56 +723,60 @@ async def record(ctx):
         return
 
     recording = True
-    recorded_file = f"{recordings_folder}/recording_{int(time.time())}.wav"
+    recorded_file = f"recordings/recording_{int(time.time())}.wav"
+    recording_sink = discord.sinks.WaveSink()
 
-    # Use Discord AudioSink to capture voice audio
-    sink = discord.sinks.WaveSink()  # Records as WAV
-    ctx.voice_client.start_recording(
-        sink,
-        lambda s, f: asyncio.run_coroutine_threadsafe(save_recording(ctx, f), bot.loop),
-    )
+    # This callback is invoked when recording stops.
+    def callback(sink, channel):
+        # For simplicity, we combine audio from all users into one file.
+        with open(recorded_file, "wb") as f:
+            for user_id, recorded_audio in sink.audio_data.items():
+                f.write(recorded_audio.file.getvalue())
+        # Reset recording state
+        global recording
+        recording = False
+        coro = ctx.send(f"✅ Recording stopped and saved as `{recorded_file}`")
+        fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
+        try:
+            fut.result()
+        except Exception as e:
+            print(e)
 
-    await ctx.send(f"🎙️ Recording started! File: `{recorded_file}`")
-
-async def save_recording(ctx, file_path):
-    """Handles saving the recorded file."""
-    global recording, recorded_file
-
-    recording = False
-    os.rename(file_path, recorded_file)
-
-    if os.path.exists(recorded_file):
-        await ctx.send(f"✅ Recording saved as `{recorded_file}`")
-    else:
-        await ctx.send("⚠️ Recording stopped but file was not found!")
+    ctx.voice_client.start_recording(recording_sink, callback, ctx.channel)
+    await ctx.send(f"🎙️ Recording started! File will be saved as `{recorded_file}` when stopped.")
 
 @bot.command()
 async def stop(ctx):
     """Stops recording."""
+    global recording
     if not recording:
         await ctx.send("❌ No active recording!")
         return
 
-    if ctx.voice_client and ctx.voice_client.recording:
-        ctx.voice_client.stop_recording()
-        await ctx.send("✅ Recording stopped, saving file...")
-    else:
-        await ctx.send("⚠️ No active recording process!")
+    ctx.voice_client.stop_recording()
+    await ctx.send("⏹️ Stopping recording...")
 
 @bot.command()
-async def play(ctx):
-    """Plays the last recorded audio."""
+async def play(ctx, filename: str = None):
+    """Plays the last recorded audio or a specified file."""
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
 
-    if not recorded_file or not os.path.exists(recorded_file):
-        await ctx.send(f"❌ No recording found or file `{recorded_file}` missing!")
+    # If no filename is provided, use the latest recording.
+    if filename is None:
+        if not recorded_file:
+            await ctx.send("❌ No recording found!")
+            return
+        filename = recorded_file
+
+    if not os.path.exists(filename):
+        await ctx.send(f"❌ File `{filename}` not found!")
         return
 
-    source = discord.FFmpegPCMAudio(recorded_file)
-    ctx.voice_client.play(source)
-    await ctx.send(f"▶️ Playing `{recorded_file}`!")
+    source = discord.FFmpegPCMAudio(filename)
+    ctx.voice_client.play(source, after=lambda e: print(f"Playback finished: {e}"))
+    await ctx.send(f"▶️ Playing `{filename}`!")
 
 
 
