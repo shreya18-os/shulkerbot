@@ -52,7 +52,7 @@ def is_allowed_user():
         return True
     return commands.check(predicate)
 
-
+intents = discord.Intents.default()
 intents = discord.Intents.all()
 bot = commands.Bot(
     command_prefix=".", 
@@ -677,7 +677,7 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 #vc record
 
 recording = False
-recorded_file = None  # To store the latest file
+recorded_file = None  # Stores the latest recording filename
 
 @bot.command()
 async def join(ctx):
@@ -714,9 +714,13 @@ async def record(ctx):
     recording = True
     recorded_file = f"recording_{int(time.time())}.mp3"
 
-    # Ensure FFmpeg captures audio properly
+    # Save the file in a 'recordings' folder
+    os.makedirs("recordings", exist_ok=True)
+    recorded_path = os.path.join("recordings", recorded_file)
+
+    # Ensure FFmpeg captures the correct input (this may need adjustments)
     process = subprocess.Popen(
-        ["ffmpeg", "-y", "-f", "pulse", "-i", "default", recorded_file],
+        ["ffmpeg", "-y", "-f", "dshow", "-i", "audio=virtual-audio-capturer", recorded_path],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
@@ -736,7 +740,7 @@ async def stop(ctx):
     recording = False
     if hasattr(ctx.voice_client, "recording_process"):
         ctx.voice_client.recording_process.terminate()
-        await ctx.send(f"✅ Recording stopped! File saved as `{recorded_file}`")
+        await ctx.send(f"✅ Recording stopped! File saved as `recordings/{recorded_file}`")
     else:
         await ctx.send("❌ No recording process found!")
 
@@ -752,13 +756,17 @@ async def play(ctx, filename: str = None):
     if filename is None:
         filename = recorded_file  # Play the latest recording
 
-    if filename is None or not os.path.exists(filename):
-        await ctx.send(f"❌ File `{filename}` not found!")
+    if filename is None or not os.path.exists(os.path.join("recordings", filename)):
+        await ctx.send(f"❌ File `recordings/{filename}` not found!")
         return
 
-    source = FFmpegPCMAudio(filename)
+    source = FFmpegPCMAudio(os.path.join("recordings", filename))
     ctx.voice_client.play(source)
-    await ctx.send(f"▶️ Playing `{filename}`!")
+    await ctx.send(f"▶️ Playing `recordings/{filename}`!")
+
+
+
+
 
 #Economy Commands
 
