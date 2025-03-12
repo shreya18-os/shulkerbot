@@ -762,10 +762,14 @@ async def play(ctx):
         await ctx.send("❌ I'm not in a voice channel!")
         return
 
-    # Find the most recent recording
-    files = sorted(os.listdir("recordings"), reverse=True)
+    # Find the latest recording, ignoring non-audio files
+    files = sorted(
+        [f for f in os.listdir("recordings") if f.endswith(".wav") or f.endswith(".mp3")],
+        reverse=True
+    )
+
     if not files:
-        await ctx.send("❌ No recordings found!")
+        await ctx.send("❌ No valid recordings found!")
         return
 
     latest_file = os.path.join("recordings", files[0])
