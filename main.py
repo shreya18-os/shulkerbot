@@ -53,6 +53,9 @@ def is_allowed_user():
     return commands.check(predicate)
 
 intents = discord.Intents.default()
+intents.message_content = True
+intents.guilds = True
+intents.members = True
 intents = discord.Intents.all()
 bot = commands.Bot(
     command_prefix=".", 
@@ -687,7 +690,7 @@ async def join(ctx):
     """Joins the voice channel."""
     if ctx.author.voice:
         channel = ctx.author.voice.channel
-        await channel.connect()
+        vc = await channel.connect()
         await ctx.send(f"✅ Joined **{channel.name}**!")
     else:
         await ctx.send("❌ You must be in a voice channel!")
@@ -715,12 +718,11 @@ async def record(ctx):
         return
 
     recording = True
-    recorded_file = f"recording_{int(time.time())}.mp3"
-    recorded_path = os.path.join("recordings", recorded_file)
+    recorded_file = f"recordings/recording_{int(time.time())}.mp3"
 
-    # FFmpeg command for recording (Make sure you have a proper audio source)
+    # FFmpeg command for recording voice chat (Linux & Windows compatible)
     process = subprocess.Popen(
-        ["ffmpeg", "-y", "-f", "dshow", "-i", "audio=virtual-audio-capturer", recorded_path],
+        ["ffmpeg", "-y", "-i", ctx.voice_client.channel.name, "-b:a", "128k", recorded_file],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
@@ -742,9 +744,8 @@ async def stop(ctx):
         ctx.voice_client.recording_process.terminate()
 
         # Ensure the file is saved
-        recorded_path = os.path.join("recordings", recorded_file)
-        if os.path.exists(recorded_path):
-            await ctx.send(f"✅ Recording stopped! File saved as `{recorded_path}`")
+        if os.path.exists(recorded_file):
+            await ctx.send(f"✅ Recording stopped! File saved as `{recorded_file}`")
         else:
             await ctx.send(f"⚠️ Recording stopped but file was not found!")
 
@@ -767,15 +768,13 @@ async def play(ctx, filename: str = None):
         await ctx.send("❌ No recent recording found!")
         return
 
-    recorded_path = os.path.join("recordings", filename)
-
-    if not os.path.exists(recorded_path):
-        await ctx.send(f"❌ File `{recorded_path}` not found!")
+    if not os.path.exists(filename):
+        await ctx.send(f"❌ File `{filename}` not found!")
         return
 
-    source = FFmpegPCMAudio(recorded_path)
+    source = FFmpegPCMAudio(filename)
     ctx.voice_client.play(source)
-    await ctx.send(f"▶️ Playing `{recorded_path}`!")
+    await ctx.send(f"▶️ Playing `{filename}`!")
 
 
 
