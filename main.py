@@ -739,9 +739,9 @@ async def stop(ctx):
     global recording_process
 
     if recording_process is None:
-        await ctx.send("❌ No recording is in progress!")
+        await ctx.send("❌ No recording is in progress!")  # This message was being sent twice
         return
-    
+
     # Stop the recording process
     recording_process.terminate()
     recording_process = None
@@ -754,6 +754,7 @@ async def stop(ctx):
         await ctx.send(file=discord.File(filename))
     else:
         await ctx.send("❌ Recording failed or file not found!")
+
 
 
 
