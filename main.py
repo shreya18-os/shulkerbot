@@ -676,7 +676,7 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 #vc record
 
 recording = False
-recorded_file = "recorded_audio.wav"
+recorded_file = "recorded_audio.mp3"  # Changed to MP3 for better compatibility
 
 @bot.command()
 async def join(ctx):
@@ -711,9 +711,9 @@ async def record(ctx):
 
     recording = True
 
-    # Start recording with FFmpeg
+    # Record directly from the Discord VC
     process = subprocess.Popen(
-        ["ffmpeg", "-y", "-f", "dshow", "-i", "audio=Microphone", recorded_file],
+        ["ffmpeg", "-y", "-f", "pulse", "-i", "default", recorded_file],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
@@ -750,7 +750,6 @@ async def play(ctx):
     source = discord.FFmpegPCMAudio(recorded_file)
     ctx.voice_client.play(source)
     await ctx.send("▶️ Playing the recorded audio!")
-
 
 
 #Economy Commands
