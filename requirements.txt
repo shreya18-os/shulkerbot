@@ -2,6 +2,5 @@ discord.py==2.3.2
 python-dotenv
 aiohttp
 requests
-ffmpeg
-aiosqlite  # for SQLite
+aiosqlite
 asyncio
