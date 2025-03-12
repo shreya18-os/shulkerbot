@@ -754,11 +754,14 @@ async def stop(ctx):
     recording = False
     recording_sink.vc.stop_recording()
 
-    # Ensure the file exists after stopping
-    if not os.path.exists(recorded_file):
-        await ctx.send(f"⚠️ Recording stopped but file was not found! Expected: {recorded_file}")
+    # Debugging: Print the file path
+    file_exists = os.path.exists(recorded_file)
+    file_size = os.path.getsize(recorded_file) if file_exists else 0
+
+    if not file_exists or file_size == 0:
+        await ctx.send(f"⚠️ Recording stopped but file was NOT saved! Expected: `{recorded_file}`")
     else:
-        await ctx.send(f"✅ Recording stopped! File saved as {recorded_file}")
+        await ctx.send(f"✅ Recording saved! File path: `{recorded_file}`, Size: {file_size} bytes")
 
     # Reset variables
     recorded_file = None
