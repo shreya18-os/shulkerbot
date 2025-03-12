@@ -1,11 +1,12 @@
+import os
 import subprocess
 import sys
 
-# Function to install packages
+# Function to install required packages
 def install(package):
     subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "--force-reinstall", package], check=True)
 
-# Ensure required packages are installed
+# Ensure required dependencies are installed
 try:
     import discord
 except ImportError:
@@ -18,7 +19,10 @@ except ImportError:
     install("pynacl")
     import nacl
 
-import os
+# Install system-level dependencies
+os.system("apt update && apt install -y libffi-dev libnacl-dev")
+
+# Now import other required modules
 import random
 import traceback
 import requests
@@ -30,6 +34,7 @@ from discord.ui import Button, View
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
+
 
 
 
