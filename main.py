@@ -764,6 +764,7 @@ async def stop(ctx):
     recorded_file = None
     recording_sink = None
 
+
 @bot.command()
 async def play(ctx):
     if not ctx.voice_client:
