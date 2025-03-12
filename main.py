@@ -679,11 +679,11 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
 #vc record
 
+recordings_folder = "recordings"
+os.makedirs(recordings_folder, exist_ok=True)  # Ensure the folder exists
+
 recording = False
 recorded_file = None
-
-# Ensure the recordings folder exists
-os.makedirs("recordings", exist_ok=True)
 
 @bot.command()
 async def join(ctx):
@@ -706,7 +706,7 @@ async def leave(ctx):
 
 @bot.command()
 async def record(ctx):
-    """Starts recording the voice chat."""
+    """Starts recording the voice channel."""
     global recording, recorded_file
 
     if not ctx.voice_client:
@@ -718,65 +718,54 @@ async def record(ctx):
         return
 
     recording = True
-    recorded_file = f"recordings/recording_{int(time.time())}.mp3"
+    recorded_file = f"{recordings_folder}/recording_{int(time.time())}.wav"
 
-    # Debugging: Log if file path is correct
-    print(f"Recording started. File: {recorded_file}")
-
-    # FFmpeg command (Windows & Linux compatible)
-    process = subprocess.Popen(
-        [
-            "ffmpeg", "-y", "-f", "alsa", "-i", "default",  # Linux audio capture
-            "-ac", "2", "-b:a", "128k", recorded_file
-        ],
-        stdout=subprocess.PIPE,  # Capture output for debugging
-        stderr=subprocess.PIPE
+    # Use Discord AudioSink to capture voice audio
+    sink = discord.sinks.WaveSink()  # Records as WAV
+    ctx.voice_client.start_recording(
+        sink,
+        lambda s, f: asyncio.run_coroutine_threadsafe(save_recording(ctx, f), bot.loop),
     )
 
-    ctx.voice_client.recording_process = process
     await ctx.send(f"🎙️ Recording started! File: `{recorded_file}`")
+
+async def save_recording(ctx, file_path):
+    """Handles saving the recorded file."""
+    global recording, recorded_file
+
+    recording = False
+    os.rename(file_path, recorded_file)
+
+    if os.path.exists(recorded_file):
+        await ctx.send(f"✅ Recording saved as `{recorded_file}`")
+    else:
+        await ctx.send("⚠️ Recording stopped but file was not found!")
 
 @bot.command()
 async def stop(ctx):
-    """Stops recording and saves the file."""
-    global recording
-
+    """Stops recording."""
     if not recording:
         await ctx.send("❌ No active recording!")
         return
 
-    recording = False
-    if hasattr(ctx.voice_client, "recording_process"):
-        ctx.voice_client.recording_process.terminate()
-
-        # Debugging: Check if file actually exists
-        if os.path.exists(recorded_file):
-            await ctx.send(f"✅ Recording stopped! File saved as `{recorded_file}`")
-        else:
-            await ctx.send("⚠️ Recording stopped but file was not found!")
-            print(f"ERROR: File {recorded_file} not found!")  # Debugging log
-
+    if ctx.voice_client and ctx.voice_client.recording:
+        ctx.voice_client.stop_recording()
+        await ctx.send("✅ Recording stopped, saving file...")
     else:
-        await ctx.send("❌ No recording process found!")
+        await ctx.send("⚠️ No active recording process!")
 
 @bot.command()
 async def play(ctx):
     """Plays the last recorded audio."""
-    global recorded_file
-
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
 
-    if not recorded_file:
-        await ctx.send("❌ No recording found!")
+    if not recorded_file or not os.path.exists(recorded_file):
+        await ctx.send(f"❌ No recording found or file `{recorded_file}` missing!")
         return
 
-    if not os.path.exists(recorded_file):
-        await ctx.send(f"❌ File `{recorded_file}` not found!")
-        return
-
-    source = FFmpegPCMAudio(recorded_file)
+    source = discord.FFmpegPCMAudio(recorded_file)
     ctx.voice_client.play(source)
     await ctx.send(f"▶️ Playing `{recorded_file}`!")
 
