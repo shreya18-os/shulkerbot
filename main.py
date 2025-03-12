@@ -682,7 +682,7 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 #vc record
 
 recording = False
-audio_data = []  # Stores recorded audio frames
+audio_data = {}  # Stores recorded audio per user
 
 @bot.command()
 async def join(ctx):
@@ -706,7 +706,7 @@ async def leave(ctx):
 @bot.command()
 async def record(ctx):
     """Start recording audio in the voice channel"""
-    global recording
+    global recording, audio_data
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
@@ -720,7 +720,19 @@ async def record(ctx):
         return
 
     recording = True
-    ctx.voice_client.start_recording(discord.sinks.WaveSink(), save_recording, ctx)
+    audio_data = {}  # Reset previous recordings
+    sink = discord.sinks.WaveSink()  # Use WaveSink to capture raw PCM data
+
+    def on_done(sink, channel):
+        global audio_data
+        for user_id, audio in sink.audio_data.items():
+            user_audio_file = f"recording_{user_id}.wav"
+            with open(user_audio_file, "wb") as f:
+                f.write(audio.file.getvalue())
+            audio_data[user_id] = user_audio_file  # Save per-user audio
+        asyncio.run_coroutine_threadsafe(channel.send("✅ Recording stopped!"), bot.loop)
+
+    ctx.voice_client.start_recording(sink, on_done, ctx.channel)
     await ctx.send("🎙️ Recording started!")
 
 @bot.command()
@@ -733,7 +745,7 @@ async def stop(ctx):
 
     recording = False
     ctx.voice_client.stop_recording()
-    await ctx.send("✅ Recording stopped! Saved as `recording.wav`.")
+    await ctx.send("✅ Recording stopped! Processing audio...")
 
 @bot.command()
 async def play(ctx):
@@ -742,23 +754,14 @@ async def play(ctx):
         await ctx.send("❌ I'm not in a voice channel!")
         return
 
-    if not os.path.exists("recording.wav"):
+    if not audio_data:
         await ctx.send("❌ No recording found!")
         return
 
-    source = FFmpegPCMAudio("recording.wav")
-    ctx.voice_client.play(source)
-    await ctx.send("▶️ Playing recording!")
-
-def save_recording(sink, ctx):
-    """Save the recorded audio to a file"""
-    if sink.audio_data:
-        with wave.open("recording.wav", "wb") as wf:
-            wf.setnchannels(1)  # Mono
-            wf.setsampwidth(2)  # 16-bit PCM
-            wf.setframerate(48000)  # Standard Discord sample rate
-            wf.writeframes(sink.audio_data)
-
+    for user_id, file_path in audio_data.items():
+        source = FFmpegPCMAudio(file_path)
+        ctx.voice_client.play(source)
+        await ctx.send(f"▶️ Playing recording from user <@{user_id}>!")
 
 
 
