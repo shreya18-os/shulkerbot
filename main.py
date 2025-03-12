@@ -712,38 +712,31 @@ async def leave(ctx):
 
 @bot.command()
 async def record(ctx):
-    """Starts recording the voice channel using discord.sinks.WaveSink."""
-    global recording, recorded_file, recording_sink
+    global recording
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
-
+    
     if recording:
         await ctx.send("❌ Already recording!")
         return
 
+    # Ensure 'recordings' folder exists
+    if not os.path.exists("recordings"):
+        os.makedirs("recordings")
+
+    filename = f"recordings/recording_{int(time.time())}.wav"
     recording = True
-    recorded_file = f"recordings/recording_{int(time.time())}.wav"
-    recording_sink = discord.sinks.WaveSink()
 
-    # This callback is invoked when recording stops.
-    def callback(sink, channel):
-        # For simplicity, we combine audio from all users into one file.
-        with open(recorded_file, "wb") as f:
-            for user_id, recorded_audio in sink.audio_data.items():
-                f.write(recorded_audio.file.getvalue())
-        # Reset recording state
-        global recording
-        recording = False
-        coro = ctx.send(f"✅ Recording stopped and saved as `{recorded_file}`")
-        fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
-        try:
-            fut.result()
-        except Exception as e:
-            print(e)
-
-    ctx.voice_client.start_recording(recording_sink, callback, ctx.channel)
-    await ctx.send(f"🎙️ Recording started! File will be saved as `{recorded_file}` when stopped.")
+    # Start recording with FFmpeg
+    process = subprocess.Popen(
+        ["ffmpeg", "-y", "-f", "dshow", "-i", "audio=Microphone", filename],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    
+    ctx.voice_client.recording_process = process
+    await ctx.send(f"🎙️ Recording started! File: {filename}")
 
 @bot.command()
 async def stop(ctx):
