@@ -682,7 +682,7 @@ recorded_file = "recorded_audio.wav"
 async def join(ctx):
     if ctx.author.voice:
         channel = ctx.author.voice.channel
-        await channel.connect()
+        vc = await channel.connect()
         await ctx.send(f"✅ Joined **{channel.name}**!")
     else:
         await ctx.send("❌ You must be in a voice channel!")
@@ -701,36 +701,38 @@ async def record(ctx):
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
-    
+
     if recording:
         await ctx.send("❌ Already recording!")
         return
-    
-    recording = True
 
-    # Start recording VC audio
-    process = subprocess.Popen(
-        ["ffmpeg", "-y", "-i", ctx.voice_client.source, "-ac", "2", "-f", "wav", recorded_file],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
+    recording = True
+    ctx.voice_client.start_recording(
+        discord.sinks.WaveSink(),  # WAV format for better quality
+        finished_callback, 
+        ctx
     )
-    
-    ctx.voice_client.recording_process = process
     await ctx.send("🎙️ Recording started!")
+
+async def finished_callback(sink, ctx):
+    global recording
+    recording = False
+
+    # Save the recording
+    for user_id, audio in sink.audio_data.items():
+        with open(recorded_file, "wb") as f:
+            f.write(audio.file.getvalue())
+
+    await ctx.send("✅ Recording stopped and saved!")
 
 @bot.command()
 async def stop(ctx):
-    global recording
     if not recording:
         await ctx.send("❌ No active recording!")
         return
-    
-    recording = False
-    if hasattr(ctx.voice_client, "recording_process"):
-        ctx.voice_client.recording_process.terminate()
-        await ctx.send("✅ Recording stopped!")
-    else:
-        await ctx.send("❌ No recording process found!")
+
+    ctx.voice_client.stop_recording()
+    await ctx.send("✅ Recording stopped!")
 
 @bot.command()
 async def play(ctx):
@@ -741,34 +743,11 @@ async def play(ctx):
     if not os.path.exists(recorded_file):
         await ctx.send("❌ No recording found!")
         return
-    
-    # Ensure FFmpeg is used correctly
+
     source = discord.FFmpegPCMAudio(recorded_file)
     ctx.voice_client.play(source, after=lambda e: print(f"Playback finished: {e}"))
     await ctx.send("▶️ Playing the recorded audio!")
 
-
-
-
-
-@bot.command()
-async def dmall(ctx, *, message: str = None):
-    if ctx.author.id != OWNER_ID:
-        return await ctx.send("❌ You do not have permission to use this command!")
-
-    if not message:
-        return await ctx.send("⚠️ Missing arguments! Please provide a message to send.")
-
-    sent_count = 0
-    for member in ctx.guild.members:
-        if not member.bot:  # Ignore bots
-            try:
-                await member.send(message)
-                sent_count += 1
-            except discord.Forbidden:
-                pass  # Cannot DM this member (probably has DMs disabled)
-
-    await ctx.send(f"✅ Successfully sent message to **{sent_count} members**!")
 
 
 #Economy Commands
