@@ -13,11 +13,14 @@ from discord.ext import commands
 from datetime import datetime, timedelta
 
 # Automatically install PyNaCl if not installed
+import subprocess
+
 try:
     import nacl
 except ImportError:
-    os.system("pip install pynacl")
+    subprocess.run("pip install pynacl", shell=True, check=True)
     import nacl  # Import again after installation
+
 
 # Replace with your actual Discord User ID(s)
 ALLOWED_USERS = [1101467683083530331, 987654321098765432]
