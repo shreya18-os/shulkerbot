@@ -681,13 +681,16 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
 #vc record
 
+# Store recording process
+recording_process = None
+
 @bot.command()
 async def join(ctx):
     """Bot joins the voice channel."""
     if ctx.author.voice is None or ctx.author.voice.channel is None:
         await ctx.send("❌ You must be in a voice channel!")
         return
-    
+
     channel = ctx.author.voice.channel
     if ctx.voice_client is None:
         await channel.connect()
@@ -708,30 +711,55 @@ async def leave(ctx):
 @bot.command()
 async def record(ctx):
     """Starts recording the voice channel."""
-    if ctx.author.voice is None or ctx.author.voice.channel is None:
-        await ctx.send("❌ You must be in a voice channel!")
-        return
+    global recording_process
     
     if ctx.voice_client is None:
         await ctx.send("❌ Bot is not in a voice channel! Use `.join` first.")
         return
-
-    await ctx.send("🎙️ Recording started...")
     
-    # Recording command using ffmpeg
-    os.system("ffmpeg -y -f dshow -i audio=\"Stereo Mix (Realtek(R) Audio)\" -t 60 output.mp3")
+    if ctx.author.voice is None:
+        await ctx.send("❌ You must be in a voice channel to start recording!")
+        return
 
-    await asyncio.sleep(60)  # Recording for 60 seconds
+    # File path
+    filename = "recorded_audio.wav"
 
-    await ctx.send("✅ Recording stopped! Sending the file...")
+    # Start recording using FFmpeg
+    recording_process = subprocess.Popen(
+        ["ffmpeg", "-f", "dshow", "-i", "audio=Microphone", "-y", filename],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
 
-    # Send the file
-    await ctx.send(file=discord.File("output.mp3"))
+    await ctx.send("🎙️ Recording started... Use `.stop` to stop.")
 
 @bot.command()
 async def stop(ctx):
-    """Stops the recording (not implemented properly yet)."""
-    await ctx.send("❌ Recording stopped manually! (Stop command not properly implemented yet)")
+    """Stops the recording and sends the file."""
+    global recording_process
+
+    if recording_process is None:
+        await ctx.send("❌ No recording is in progress!")
+        return
+    
+    # Stop the recording process
+    recording_process.terminate()
+    recording_process = None
+
+    await ctx.send("✅ Recording stopped! Sending the file...")
+
+    # Send the file if it exists
+    filename = "recorded_audio.wav"
+    if os.path.exists(filename):
+        await ctx.send(file=discord.File(filename))
+    else:
+        await ctx.send("❌ Recording failed or file not found!")
+
+
+
+
+
+
 
 
 
