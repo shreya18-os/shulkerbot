@@ -1,6 +1,5 @@
 discord.py
-pynacl
+pynacl==1.5.0
 ffmpeg
 requests
 asyncio
-sqlite3
