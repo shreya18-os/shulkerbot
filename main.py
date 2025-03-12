@@ -6,20 +6,11 @@ import requests
 import json
 import sqlite3
 import asyncio
-from discord import FFmpegPCMAudio
 from discord.ui import Button, View
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 
-# Automatically install PyNaCl if not installed
-import subprocess
-
-try:
-    import nacl
-except ImportError:
-    subprocess.run("pip install pynacl", shell=True, check=True)
-    import nacl  # Import again after installation
 
 
 # Replace with your actual Discord User ID(s)
