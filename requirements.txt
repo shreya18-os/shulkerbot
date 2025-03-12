@@ -1,0 +1,6 @@
+discord.py
+pynacl
+ffmpeg
+requests
+asyncio
+sqlite3
