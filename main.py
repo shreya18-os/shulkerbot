@@ -51,22 +51,14 @@ def is_allowed_user():
         return True
     return commands.check(predicate)
 
-# VC Recording Setup
-recording = False
-recorded_file = "recorded_audio.wav"
 
-intents = discord.Intents.default()
-intents.message_content = True
-intents.guilds = True
-intents.members = True  # Needed for role management & DMs
-intents.presences = True  # Enables presence updates (required for status changes)
-
-# Add rate limiting to prevent Discord API rate limits
+intents = discord.Intents.all()
 bot = commands.Bot(
     command_prefix=".", 
     intents=intents, 
-    help_command=None,
-    http_timeout=aiohttp.ClientTimeout(total=60)  # Longer timeout
+    help_command=None, 
+    http_timeout=aiohttp.ClientTimeout(total=60),  
+    rate_limit_retry=True  
 )
 
 # Do not create session at module level
@@ -683,6 +675,9 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
 #vc record
 
+recording = False
+recorded_file = "recorded_audio.wav"
+
 @bot.command()
 async def join(ctx):
     if ctx.author.voice:
@@ -713,9 +708,9 @@ async def record(ctx):
     
     recording = True
 
-    # Start recording using FFmpeg
+    # Start recording VC audio
     process = subprocess.Popen(
-        ["ffmpeg", "-y", "-f", "dshow", "-i", "audio=Microphone", recorded_file],
+        ["ffmpeg", "-y", "-i", ctx.voice_client.source, "-ac", "2", "-f", "wav", recorded_file],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
@@ -751,7 +746,6 @@ async def play(ctx):
     source = discord.FFmpegPCMAudio(recorded_file)
     ctx.voice_client.play(source, after=lambda e: print(f"Playback finished: {e}"))
     await ctx.send("▶️ Playing the recorded audio!")
-
 
 
 
