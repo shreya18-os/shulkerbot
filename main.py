@@ -675,6 +675,13 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
 #vc record
 
+import discord
+from discord.ext import commands
+import os
+
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix=".", intents=intents, help_command=None)
+
 recording = False
 recorded_file = "recorded_audio.wav"
 
@@ -682,7 +689,7 @@ recorded_file = "recorded_audio.wav"
 async def join(ctx):
     if ctx.author.voice:
         channel = ctx.author.voice.channel
-        vc = await channel.connect()
+        await channel.connect()
         await ctx.send(f"✅ Joined **{channel.name}**!")
     else:
         await ctx.send("❌ You must be in a voice channel!")
@@ -708,7 +715,7 @@ async def record(ctx):
 
     recording = True
     ctx.voice_client.start_recording(
-        discord.sinks.WaveSink(),  # WAV format for better quality
+        discord.sinks.WaveSink(), 
         finished_callback, 
         ctx
     )
@@ -718,10 +725,10 @@ async def finished_callback(sink, ctx):
     global recording
     recording = False
 
-    # Save the recording
-    for user_id, audio in sink.audio_data.items():
-        with open(recorded_file, "wb") as f:
-            f.write(audio.file.getvalue())
+    # Save the audio to a file
+    audio_data = list(sink.audio_data.values())[0]  # Get the first user's audio
+    with open(recorded_file, "wb") as f:
+        f.write(audio_data.file.getvalue())
 
     await ctx.send("✅ Recording stopped and saved!")
 
@@ -745,8 +752,9 @@ async def play(ctx):
         return
 
     source = discord.FFmpegPCMAudio(recorded_file)
-    ctx.voice_client.play(source, after=lambda e: print(f"Playback finished: {e}"))
+    ctx.voice_client.play(source)
     await ctx.send("▶️ Playing the recorded audio!")
+
 
 
 #Economy Commands
