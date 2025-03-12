@@ -675,18 +675,12 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
 #vc record
 
-import discord
-from discord.ext import commands
-import os
-
-intents = discord.Intents.all()
-bot = commands.Bot(command_prefix=".", intents=intents, help_command=None)
-
 recording = False
 recorded_file = "recorded_audio.wav"
 
 @bot.command()
 async def join(ctx):
+    """Joins the user's voice channel."""
     if ctx.author.voice:
         channel = ctx.author.voice.channel
         await channel.connect()
@@ -696,6 +690,7 @@ async def join(ctx):
 
 @bot.command()
 async def leave(ctx):
+    """Leaves the voice channel."""
     if ctx.voice_client:
         await ctx.voice_client.disconnect()
         await ctx.send("👋 Left the voice channel!")
@@ -704,6 +699,7 @@ async def leave(ctx):
 
 @bot.command()
 async def record(ctx):
+    """Starts recording the voice chat."""
     global recording
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
@@ -714,35 +710,35 @@ async def record(ctx):
         return
 
     recording = True
-    ctx.voice_client.start_recording(
-        discord.sinks.WaveSink(), 
-        finished_callback, 
-        ctx
+
+    # Start recording with FFmpeg
+    process = subprocess.Popen(
+        ["ffmpeg", "-y", "-f", "dshow", "-i", "audio=Microphone", recorded_file],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
     )
+
+    ctx.voice_client.recording_process = process
     await ctx.send("🎙️ Recording started!")
-
-async def finished_callback(sink, ctx):
-    global recording
-    recording = False
-
-    # Save the audio to a file
-    audio_data = list(sink.audio_data.values())[0]  # Get the first user's audio
-    with open(recorded_file, "wb") as f:
-        f.write(audio_data.file.getvalue())
-
-    await ctx.send("✅ Recording stopped and saved!")
 
 @bot.command()
 async def stop(ctx):
+    """Stops recording and saves the file."""
+    global recording
     if not recording:
         await ctx.send("❌ No active recording!")
         return
 
-    ctx.voice_client.stop_recording()
-    await ctx.send("✅ Recording stopped!")
+    recording = False
+    if hasattr(ctx.voice_client, "recording_process"):
+        ctx.voice_client.recording_process.terminate()
+        await ctx.send(f"✅ Recording stopped! File saved as `{recorded_file}`")
+    else:
+        await ctx.send("❌ No recording process found!")
 
 @bot.command()
 async def play(ctx):
+    """Plays the recorded audio."""
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
