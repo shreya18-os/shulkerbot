@@ -744,17 +744,25 @@ async def record(ctx):
 
 @bot.command()
 async def stop(ctx):
-    global recording
+    global recording, recorded_file, recording_sink
+
     if not recording:
         await ctx.send("❌ No active recording!")
         return
-    
+
+    # Stop recording
     recording = False
-    if hasattr(ctx.voice_client, "recording_process"):
-        ctx.voice_client.recording_process.terminate()
-        await ctx.send(f"✅ Recording stopped! File saved as {ctx.voice_client.recorded_file}")
+    recording_sink.vc.stop_recording()
+
+    # Ensure the file exists after stopping
+    if not os.path.exists(recorded_file):
+        await ctx.send(f"⚠️ Recording stopped but file was not found! Expected: {recorded_file}")
     else:
-        await ctx.send("⚠️ Recording stopped but file was not found!")
+        await ctx.send(f"✅ Recording stopped! File saved as {recorded_file}")
+
+    # Reset variables
+    recorded_file = None
+    recording_sink = None
 
 @bot.command()
 async def play(ctx):
