@@ -1,4 +1,23 @@
-import discord
+import subprocess
+import sys
+
+# Function to install packages
+def install(package):
+    subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "--force-reinstall", package], check=True)
+
+# Ensure required packages are installed
+try:
+    import discord
+except ImportError:
+    install("discord.py")
+    import discord
+
+try:
+    import nacl
+except ImportError:
+    install("pynacl")
+    import nacl
+
 import os
 import random
 import traceback
@@ -6,10 +25,12 @@ import requests
 import json
 import sqlite3
 import asyncio
+from discord import FFmpegPCMAudio
 from discord.ui import Button, View
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
+
 
 
 
