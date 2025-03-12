@@ -690,7 +690,7 @@ async def join(ctx):
     """Joins the voice channel."""
     if ctx.author.voice:
         channel = ctx.author.voice.channel
-        vc = await channel.connect()
+        await channel.connect()
         await ctx.send(f"✅ Joined **{channel.name}**!")
     else:
         await ctx.send("❌ You must be in a voice channel!")
@@ -720,11 +720,17 @@ async def record(ctx):
     recording = True
     recorded_file = f"recordings/recording_{int(time.time())}.mp3"
 
-    # FFmpeg command for recording voice chat (Linux & Windows compatible)
+    # Debugging: Log if file path is correct
+    print(f"Recording started. File: {recorded_file}")
+
+    # FFmpeg command (Windows & Linux compatible)
     process = subprocess.Popen(
-        ["ffmpeg", "-y", "-i", ctx.voice_client.channel.name, "-b:a", "128k", recorded_file],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
+        [
+            "ffmpeg", "-y", "-f", "alsa", "-i", "default",  # Linux audio capture
+            "-ac", "2", "-b:a", "128k", recorded_file
+        ],
+        stdout=subprocess.PIPE,  # Capture output for debugging
+        stderr=subprocess.PIPE
     )
 
     ctx.voice_client.recording_process = process
@@ -743,39 +749,36 @@ async def stop(ctx):
     if hasattr(ctx.voice_client, "recording_process"):
         ctx.voice_client.recording_process.terminate()
 
-        # Ensure the file is saved
+        # Debugging: Check if file actually exists
         if os.path.exists(recorded_file):
             await ctx.send(f"✅ Recording stopped! File saved as `{recorded_file}`")
         else:
-            await ctx.send(f"⚠️ Recording stopped but file was not found!")
+            await ctx.send("⚠️ Recording stopped but file was not found!")
+            print(f"ERROR: File {recorded_file} not found!")  # Debugging log
 
     else:
         await ctx.send("❌ No recording process found!")
 
 @bot.command()
-async def play(ctx, filename: str = None):
-    """Plays the last recorded audio or a specific file."""
+async def play(ctx):
+    """Plays the last recorded audio."""
     global recorded_file
 
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
 
-    if filename is None:
-        filename = recorded_file  # Play the latest recording
-
-    if filename is None:
-        await ctx.send("❌ No recent recording found!")
+    if not recorded_file:
+        await ctx.send("❌ No recording found!")
         return
 
-    if not os.path.exists(filename):
-        await ctx.send(f"❌ File `{filename}` not found!")
+    if not os.path.exists(recorded_file):
+        await ctx.send(f"❌ File `{recorded_file}` not found!")
         return
 
-    source = FFmpegPCMAudio(filename)
+    source = FFmpegPCMAudio(recorded_file)
     ctx.voice_client.play(source)
-    await ctx.send(f"▶️ Playing `{filename}`!")
-
+    await ctx.send(f"▶️ Playing `{recorded_file}`!")
 
 
 
