@@ -1,21 +1,6 @@
 import os
 import subprocess
 import sys
-
-# Function to install dependencies
-def install(package):
-    subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "--force-reinstall", package], check=True)
-
-# Ensure required dependencies are installed
-required_packages = ["discord.py", "pynacl", "ffmpeg", "pydub", "numpy"]
-
-for package in required_packages:
-    try:
-        __import__(package.replace("-", "_"))  # Import the package dynamically
-    except ImportError:
-        install(package)
-
-# Now import everything after ensuring installation
 import discord
 import nacl
 import random
@@ -32,6 +17,19 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 from pydub import AudioSegment
+
+# Function to install dependencies
+def install(package):
+    subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "--force-reinstall", package], check=True)
+
+# Ensure required dependencies are installed
+required_packages = ["discord.py", "pynacl", "ffmpeg", "pydub", "numpy"]
+
+for package in required_packages:
+    try:
+        __import__(package.replace("-", "_"))  # Import the package dynamically
+    except ImportError:
+        install(package)
 
 
 
@@ -681,12 +679,14 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
 #vc record
 
+# Bot setup
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix=".", intents=intents)
 recording = False
-audio_data = {}  # Stores recorded audio per user
+recorded_file = "recorded_audio.wav"
 
 @bot.command()
 async def join(ctx):
-    """Make the bot join the voice channel"""
     if ctx.author.voice:
         channel = ctx.author.voice.channel
         await channel.connect()
@@ -696,7 +696,6 @@ async def join(ctx):
 
 @bot.command()
 async def leave(ctx):
-    """Make the bot leave the voice channel"""
     if ctx.voice_client:
         await ctx.voice_client.disconnect()
         await ctx.send("👋 Left the voice channel!")
@@ -705,64 +704,52 @@ async def leave(ctx):
 
 @bot.command()
 async def record(ctx):
-    """Start recording audio in the voice channel"""
-    global recording, audio_data
+    global recording
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
-
-    if not ctx.voice_client.is_connected():
-        await ctx.send("❌ I'm not connected to a VC!")
-        return
-
+    
     if recording:
         await ctx.send("❌ Already recording!")
         return
-
+    
     recording = True
-    audio_data = {}  # Reset previous recordings
-    sink = discord.sinks.WaveSink()  # Use WaveSink to capture raw PCM data
-
-    def on_done(sink, channel):
-        global audio_data
-        for user_id, audio in sink.audio_data.items():
-            user_audio_file = f"recording_{user_id}.wav"
-            with open(user_audio_file, "wb") as f:
-                f.write(audio.file.getvalue())
-            audio_data[user_id] = user_audio_file  # Save per-user audio
-        asyncio.run_coroutine_threadsafe(channel.send("✅ Recording stopped!"), bot.loop)
-
-    ctx.voice_client.start_recording(sink, on_done, ctx.channel)
+    process = subprocess.Popen(
+        ["ffmpeg", "-y", "-f", "alsa", "-i", "default", recorded_file],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    
+    ctx.voice_client.recording_process = process
     await ctx.send("🎙️ Recording started!")
 
 @bot.command()
 async def stop(ctx):
-    """Stop recording and save the audio file"""
     global recording
     if not recording:
         await ctx.send("❌ No active recording!")
         return
-
+    
     recording = False
-    ctx.voice_client.stop_recording()
-    await ctx.send("✅ Recording stopped! Processing audio...")
+    if hasattr(ctx.voice_client, "recording_process"):
+        ctx.voice_client.recording_process.terminate()
+        await ctx.send("✅ Recording stopped!")
+    else:
+        await ctx.send("❌ No recording process found!")
 
 @bot.command()
 async def play(ctx):
-    """Play the recorded audio"""
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
-
-    if not audio_data:
+    
+    if not os.path.exists(recorded_file):
         await ctx.send("❌ No recording found!")
         return
-
-    for user_id, file_path in audio_data.items():
-        source = FFmpegPCMAudio(file_path)
-        ctx.voice_client.play(source)
-        await ctx.send(f"▶️ Playing recording from user <@{user_id}>!")
-
+    
+    source = FFmpegPCMAudio(recorded_file)
+    ctx.voice_client.play(source)
+    await ctx.send("▶️ Playing the recorded audio!")
 
 
 
