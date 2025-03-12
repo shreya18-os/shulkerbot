@@ -761,26 +761,24 @@ async def play(ctx):
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
-    
-    # Get the latest recording
-    try:
-        latest_file = max(
-            [f for f in os.listdir(recordings_folder) if f.endswith(".wav")],
-            key=lambda f: os.path.getctime(os.path.join(recordings_folder, f))
-        )
-        file_path = os.path.join(recordings_folder, latest_file)
-    except ValueError:
-        await ctx.send("❌ No recording found!")
+
+    # Find the most recent recording
+    files = sorted(os.listdir("recordings"), reverse=True)
+    if not files:
+        await ctx.send("❌ No recordings found!")
         return
 
-    if not os.path.exists(file_path):
-        await ctx.send(f"❌ File `{file_path}` not found!")
+    latest_file = os.path.join("recordings", files[0])
+
+    # Check if the file exists before playing
+    if not os.path.exists(latest_file):
+        await ctx.send(f"❌ File {latest_file} not found!")
         return
 
-    source = discord.FFmpegPCMAudio(file_path)
+    # Play the file
+    source = discord.FFmpegPCMAudio(latest_file)
     ctx.voice_client.play(source)
-    await ctx.send(f"▶️ Playing `{latest_file}`!")
-
+    await ctx.send(f"▶️ Playing: {latest_file}")
 
 
 #Economy Commands
