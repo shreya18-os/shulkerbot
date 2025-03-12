@@ -23,14 +23,10 @@ RUN python3 -m venv /app/venv
 
 # Use the virtual environment for pip
 RUN /app/venv/bin/pip install --upgrade pip
+RUN /app/venv/bin/pip install --no-cache-dir --force-reinstall -r requirements.txt
 
-# Ensure required dependencies are installed
-RUN /app/venv/bin/pip install --no-cache-dir --force-reinstall \
-    discord.py \
-    pynacl \
-    ffmpeg \
-    pydub \
-    numpy
+# Ensure all required packages are installed
+RUN /app/venv/bin/pip install --no-cache-dir --force-reinstall discord.py pynacl ffmpeg pydub numpy requests
 
 # Set the default command to use the virtual environment
 CMD ["/app/venv/bin/python", "main.py"]
