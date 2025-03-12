@@ -681,80 +681,39 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
 #vc record
 
-# Store recording process
-recording_process = None
+class VoiceRecorder:
+    def __init__(self, bot):
+        self.bot = bot
+        self.voice_client = None
+        self.is_recording = False
 
-@bot.command()
-async def join(ctx):
-    """Bot joins the voice channel."""
-    if ctx.author.voice is None or ctx.author.voice.channel is None:
-        await ctx.send("❌ You must be in a voice channel!")
-        return
+    async def join_vc(self, ctx):
+        if ctx.author.voice:
+            channel = ctx.author.voice.channel
+            self.voice_client = await channel.connect()
+            await ctx.send(f"✅ Joined {channel.name}")
+        else:
+            await ctx.send("❌ You need to be in a voice channel!")
 
-    channel = ctx.author.voice.channel
-    if ctx.voice_client is None:
-        await channel.connect()
-        await ctx.send(f"✅ Joined `{channel.name}`")
-    else:
-        await ctx.voice_client.move_to(channel)
-        await ctx.send(f"🔄 Moved to `{channel.name}`")
+    async def record(self, ctx):
+        if not self.voice_client:
+            await ctx.send("❌ Bot is not in a voice channel!")
+            return
 
-@bot.command()
-async def leave(ctx):
-    """Bot leaves the voice channel."""
-    if ctx.voice_client is not None:
-        await ctx.voice_client.disconnect()
-        await ctx.send("❌ Left the voice channel!")
-    else:
-        await ctx.send("❌ I'm not in a voice channel!")
+        self.is_recording = True
+        await ctx.send("🎙️ Recording started...")
 
-@bot.command()
-async def record(ctx):
-    """Starts recording the voice channel."""
-    global recording_process
-    
-    if ctx.voice_client is None:
-        await ctx.send("❌ Bot is not in a voice channel! Use `.join` first.")
-        return
-    
-    if ctx.author.voice is None:
-        await ctx.send("❌ You must be in a voice channel to start recording!")
-        return
+        # Record the audio
+        audio_source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio("audio.mp3"))
+        self.voice_client.play(audio_source)
 
-    # File path
-    filename = "recorded_audio.wav"
-
-    # Start recording using FFmpeg
-    recording_process = subprocess.Popen(
-        ["ffmpeg", "-f", "dshow", "-i", "audio=Microphone", "-y", filename],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-
-    await ctx.send("🎙️ Recording started... Use `.stop` to stop.")
-
-@bot.command()
-async def stop(ctx):
-    """Stops the recording and sends the file."""
-    global recording_process
-
-    if recording_process is None:
-        await ctx.send("❌ No recording is in progress!")  # This message was being sent twice
-        return
-
-    # Stop the recording process
-    recording_process.terminate()
-    recording_process = None
-
-    await ctx.send("✅ Recording stopped! Sending the file...")
-
-    # Send the file if it exists
-    filename = "recorded_audio.wav"
-    if os.path.exists(filename):
-        await ctx.send(file=discord.File(filename))
-    else:
-        await ctx.send("❌ Recording failed or file not found!")
-
+    async def stop_recording(self, ctx):
+        if self.is_recording:
+            self.is_recording = False
+            await ctx.send("✅ Recording stopped! Sending the file...")
+            await ctx.send(file=discord.File("audio.mp3"))
+        else:
+            await ctx.send("❌ No recording is in progress!")
 
 
 
