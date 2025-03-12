@@ -703,31 +703,44 @@ async def leave(ctx):
     else:
         await ctx.send("❌ I'm not in a voice channel!")
 
+recording = False
+recordings_folder = "recordings"
+
+# Ensure the recordings folder exists
+if not os.path.exists(recordings_folder):
+    os.makedirs(recordings_folder)
+
 @bot.command()
 async def record(ctx):
     global recording
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
-    
+
     if recording:
         await ctx.send("❌ Already recording!")
         return
-    
+
     recording = True
-    timestamp = int(time.time())  # Unique timestamp
-    file_path = f"{recordings_folder}/recording_{timestamp}.wav"
+    timestamp = int(time.time())  # Unique filename
+    recorded_file = f"{recordings_folder}/recording_{timestamp}.wav"
 
-    # Start recording using FFmpeg
-    process = subprocess.Popen(
-        ["ffmpeg", "-y", "-f", "dshow", "-i", "audio=Microphone", file_path],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
-    )
+    # Correct FFmpeg command to record VC audio
+    command = [
+        "ffmpeg",
+        "-y",  # Overwrite existing file
+        "-f", "s16le",  # PCM 16-bit little-endian
+        "-ar", "48000",  # 48kHz sample rate
+        "-ac", "2",  # 2 audio channels (stereo)
+        "-i", "default",  # Input device
+        recorded_file
+    ]
 
+    process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
     ctx.voice_client.recording_process = process
-    ctx.voice_client.recording_file = file_path  # Save the filename
-    await ctx.send(f"🎙️ Recording started! File: {file_path}")
+    ctx.voice_client.recorded_file = recorded_file  # Store filename for later use
+    await ctx.send(f"🎙️ Recording started! File: {recorded_file}")
 
 @bot.command()
 async def stop(ctx):
@@ -737,24 +750,11 @@ async def stop(ctx):
         return
     
     recording = False
-
-    if not ctx.voice_client:
-        await ctx.send("❌ I'm not in a voice channel!")
-        return
-
-    # Stop FFmpeg process if it exists
     if hasattr(ctx.voice_client, "recording_process"):
         ctx.voice_client.recording_process.terminate()
-        ctx.voice_client.recording_process.wait()  
-        del ctx.voice_client.recording_process  
-
-        file_path = ctx.voice_client.recording_file
-        if os.path.exists(file_path):
-            await ctx.send(f"✅ Recording stopped! File saved as `{file_path}`")
-        else:
-            await ctx.send("⚠️ Recording stopped but file was not found!")
+        await ctx.send(f"✅ Recording stopped! File saved as {ctx.voice_client.recorded_file}")
     else:
-        await ctx.send("⚠️ No recording process found!")
+        await ctx.send("⚠️ Recording stopped but file was not found!")
 
 @bot.command()
 async def play(ctx):
