@@ -2,37 +2,22 @@ import os
 import subprocess
 import sys
 
-# Function to install required packages
+# Function to install dependencies
 def install(package):
     subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "--force-reinstall", package], check=True)
 
 # Ensure required dependencies are installed
-try:
-    import discord
-except ImportError:
-    install("discord.py")
-    import discord
+required_packages = ["discord.py", "pynacl", "ffmpeg"]
 
-try:
-    import nacl
-except ImportError:
-    install("pynacl")
-    import nacl
+for package in required_packages:
+    try:
+        __import__(package.replace("-", "_"))  # Import the package dynamically
+    except ImportError:
+        install(package)
 
-try:
-    import ffmpeg
-except ImportError:
-    install("ffmpeg")
-    import ffmpeg
-
-# Install missing system dependencies (This may not work in Railway, but it's worth trying)
-try:
-    subprocess.run(["apt-get", "update"], check=True)
-    subprocess.run(["apt-get", "install", "-y", "libffi-dev", "libnacl-dev"], check=True)
-except Exception as e:
-    print(f"System dependencies installation skipped: {e}")
-
-# Now import other required modules
+# Now import everything after ensuring installation
+import discord
+import nacl
 import random
 import traceback
 import requests
@@ -44,6 +29,7 @@ from discord.ui import Button, View
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
+
 
 
 
