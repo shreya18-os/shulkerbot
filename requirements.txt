@@ -4,3 +4,4 @@ aiohttp
 requests
 aiosqlite
 asyncio
+pynacl
