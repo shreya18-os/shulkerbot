@@ -7,7 +7,7 @@ def install(package):
     subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "--force-reinstall", package], check=True)
 
 # Ensure required dependencies are installed
-required_packages = ["discord.py", "pynacl", "ffmpeg"]
+required_packages = ["discord.py", "pynacl", "ffmpeg", "pydub", "numpy"]
 
 for package in required_packages:
     try:
@@ -24,13 +24,14 @@ import requests
 import json
 import sqlite3
 import wave
-import subprocess
 import asyncio
+import numpy as np
 from discord import FFmpegPCMAudio
 from discord.ui import Button, View
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
+from pydub import AudioSegment
 
 
 
@@ -681,40 +682,94 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
 #vc record
 
-class VoiceRecorder:
-    def __init__(self, bot):
-        self.bot = bot
-        self.voice_client = None
-        self.is_recording = False
+@bot.command()
+async def join(ctx):
+    """Make the bot join the voice channel"""
+    if ctx.author.voice:
+        channel = ctx.author.voice.channel
+        await channel.connect()
+        await ctx.send(f"✅ Joined **{channel.name}**!")
+    else:
+        await ctx.send("❌ You must be in a voice channel!")
 
-    async def join_vc(self, ctx):
-        if ctx.author.voice:
-            channel = ctx.author.voice.channel
-            self.voice_client = await channel.connect()
-            await ctx.send(f"✅ Joined {channel.name}")
-        else:
-            await ctx.send("❌ You need to be in a voice channel!")
+@bot.command()
+async def leave(ctx):
+    """Make the bot leave the voice channel"""
+    if ctx.voice_client:
+        await ctx.voice_client.disconnect()
+        await ctx.send("👋 Left the voice channel!")
+    else:
+        await ctx.send("❌ I'm not in a voice channel!")
 
-    async def record(self, ctx):
-        if not self.voice_client:
-            await ctx.send("❌ Bot is not in a voice channel!")
-            return
+@bot.command()
+async def record(ctx):
+    """Start recording audio in the voice channel"""
+    global recording, audio_data
+    if not ctx.voice_client:
+        await ctx.send("❌ I'm not in a voice channel!")
+        return
 
-        self.is_recording = True
-        await ctx.send("🎙️ Recording started...")
+    recording = True
+    audio_data = []  # Reset recorded data
+    vc = ctx.voice_client
+    vc.listen(Recorder())  # Start listening
+    await ctx.send("🎙️ Recording started!")
 
-        # Record the audio
-        audio_source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio("audio.mp3"))
-        self.voice_client.play(audio_source)
+@bot.command()
+async def stop(ctx):
+    """Stop recording and save the audio file"""
+    global recording
+    if not recording:
+        await ctx.send("❌ No active recording!")
+        return
 
-    async def stop_recording(self, ctx):
-        if self.is_recording:
-            self.is_recording = False
-            await ctx.send("✅ Recording stopped! Sending the file...")
-            await ctx.send(file=discord.File("audio.mp3"))
-        else:
-            await ctx.send("❌ No recording is in progress!")
+    recording = False
+    vc = ctx.voice_client
+    vc.stop_listening()  # Stop listening
 
+    # Convert and save the recorded audio
+    save_recording()
+    await ctx.send("✅ Recording stopped! Saved as `recording.wav`.")
+
+@bot.command()
+async def play(ctx):
+    """Play the recorded audio"""
+    if not ctx.voice_client:
+        await ctx.send("❌ I'm not in a voice channel!")
+        return
+
+    if not os.path.exists("recording.wav"):
+        await ctx.send("❌ No recording found!")
+        return
+
+    source = FFmpegPCMAudio("recording.wav")
+    ctx.voice_client.play(source)
+    await ctx.send("▶️ Playing recording!")
+
+def save_recording():
+    """Save the recorded audio to a file"""
+    if not audio_data:
+        return
+
+    # Convert recorded audio frames to NumPy array
+    audio_array = np.concatenate(audio_data, axis=0)
+
+    # Convert NumPy array to raw audio
+    raw_audio = audio_array.tobytes()
+
+    # Save as WAV file
+    with wave.open("recording.wav", "wb") as wf:
+        wf.setnchannels(1)  # Mono
+        wf.setsampwidth(2)  # 16-bit PCM
+        wf.setframerate(48000)  # Standard Discord sample rate
+        wf.writeframes(raw_audio)
+
+class Recorder(discord.AudioSink):
+    """Custom audio recorder"""
+    def write(self, data):
+        global audio_data
+        if recording:
+            audio_data.append(np.frombuffer(data, dtype=np.int16))
 
 
 
