@@ -7,6 +7,7 @@ import random
 import traceback
 import requests
 import aiohttp
+import time
 import json
 import sqlite3
 import wave
@@ -699,7 +700,7 @@ async def leave(ctx):
 
 @bot.command()
 async def record(ctx):
-    """Starts recording the voice chat."""
+    """Starts recording the voice chat with unique filenames."""
     global recording
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
@@ -711,7 +712,10 @@ async def record(ctx):
 
     recording = True
 
-    # Record directly from the Discord VC
+    # Generate a unique filename based on timestamp
+    global recorded_file
+    recorded_file = f"recording_{int(time.time())}.mp3"
+
     process = subprocess.Popen(
         ["ffmpeg", "-y", "-f", "pulse", "-i", "default", recorded_file],
         stdout=subprocess.DEVNULL,
@@ -719,7 +723,7 @@ async def record(ctx):
     )
 
     ctx.voice_client.recording_process = process
-    await ctx.send("🎙️ Recording started!")
+    await ctx.send(f"🎙️ Recording started! File: `{recorded_file}`")
 
 @bot.command()
 async def stop(ctx):
