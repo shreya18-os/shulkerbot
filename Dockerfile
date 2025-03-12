@@ -1,26 +1,29 @@
-FROM debian:latest
+# Use a lightweight Python image
+FROM python:3.11-slim
 
-# Update system and install required packages
+# Set the working directory
+WORKDIR /app
+
+# Install required system dependencies
 RUN apt-get update && apt-get install -y \
     software-properties-common \
     build-essential \
     wget \
     curl \
-    python3 \
-    python3-pip \
     python3-venv \
     sqlite3 \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /app
-
-# Copy bot files into the container
+# Copy project files
 COPY . .
 
-# Install dependencies
-RUN pip3 install -r requirements.txt
+# Create and activate a virtual environment
+RUN python3 -m venv /app/venv
 
-# Start the bot
-CMD ["python3", "main.py"]
+# Use the virtual environment for pip
+RUN /app/venv/bin/pip install --upgrade pip
+RUN /app/venv/bin/pip install -r requirements.txt
+
+# Set the default command to use the virtual environment
+CMD ["/app/venv/bin/python", "main.py"]
