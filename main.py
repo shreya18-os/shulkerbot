@@ -19,8 +19,18 @@ except ImportError:
     install("pynacl")
     import nacl
 
-# Install system-level dependencies
-os.system("apt update && apt install -y libffi-dev libnacl-dev")
+try:
+    import ffmpeg
+except ImportError:
+    install("ffmpeg")
+    import ffmpeg
+
+# Install missing system dependencies (This may not work in Railway, but it's worth trying)
+try:
+    subprocess.run(["apt-get", "update"], check=True)
+    subprocess.run(["apt-get", "install", "-y", "libffi-dev", "libnacl-dev"], check=True)
+except Exception as e:
+    print(f"System dependencies installation skipped: {e}")
 
 # Now import other required modules
 import random
@@ -34,6 +44,7 @@ from discord.ui import Button, View
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
+
 
 
 
