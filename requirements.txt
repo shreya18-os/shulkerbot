@@ -1,5 +1,7 @@
-discord.py
-pynacl==1.5.0
-ffmpeg
+discord.py==2.3.2
+python-dotenv
+aiohttp
 requests
+ffmpeg
+aiosqlite  # for SQLite
 asyncio
