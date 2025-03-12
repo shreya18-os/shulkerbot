@@ -27,10 +27,12 @@ required_packages = ["discord.py", "pynacl", "ffmpeg", "pydub", "numpy"]
 
 for package in required_packages:
     try:
-        __import__(package.replace("-", "_"))  # Import the package dynamically
+        __import__(package.replace("-", "_"))
     except ImportError:
         install(package)
 
+# Manually install PyNaCl as it's required for voice
+install("pynacl")
 
 
 
