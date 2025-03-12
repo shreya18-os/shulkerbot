@@ -23,6 +23,8 @@ import traceback
 import requests
 import json
 import sqlite3
+import wave
+import subprocess
 import asyncio
 from discord import FFmpegPCMAudio
 from discord.ui import Button, View
@@ -681,55 +683,59 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
 @bot.command()
 async def join(ctx):
-    """Command to make bot join VC"""
-    if ctx.author.voice:
-        channel = ctx.author.voice.channel
-        if ctx.voice_client:  # If already connected, move to the new VC
-            await ctx.voice_client.move_to(channel)
-        else:
-            try:
-                await channel.connect()
-                await ctx.send(f"Joined {channel.name}!")
-            except Exception as e:
-                await ctx.send(f"Error joining VC: `{e}`")
+    """Bot joins the voice channel."""
+    if ctx.author.voice is None or ctx.author.voice.channel is None:
+        await ctx.send("❌ You must be in a voice channel!")
+        return
+    
+    channel = ctx.author.voice.channel
+    if ctx.voice_client is None:
+        await channel.connect()
+        await ctx.send(f"✅ Joined `{channel.name}`")
     else:
-        await ctx.send("You're not in a voice channel!")
+        await ctx.voice_client.move_to(channel)
+        await ctx.send(f"🔄 Moved to `{channel.name}`")
 
 @bot.command()
 async def leave(ctx):
-    """Command to make bot leave VC"""
-    if ctx.voice_client:
+    """Bot leaves the voice channel."""
+    if ctx.voice_client is not None:
         await ctx.voice_client.disconnect()
-        await ctx.send("Left the voice channel.")
+        await ctx.send("❌ Left the voice channel!")
     else:
-        await ctx.send("I'm not in a voice channel.")
+        await ctx.send("❌ I'm not in a voice channel!")
 
 @bot.command()
 async def record(ctx):
-    """Command to start recording VC audio"""
-    if ctx.voice_client:
-        vc = ctx.voice_client
-        audio_sink = discord.sinks.WaveSink()  # Records in .wav format
-        vc.start_recording(audio_sink, finished_callback, ctx)  
-        await ctx.send("Recording started...")
-    else:
-        await ctx.send("I'm not in a voice channel!")
+    """Starts recording the voice channel."""
+    if ctx.author.voice is None or ctx.author.voice.channel is None:
+        await ctx.send("❌ You must be in a voice channel!")
+        return
+    
+    if ctx.voice_client is None:
+        await ctx.send("❌ Bot is not in a voice channel! Use `.join` first.")
+        return
 
-async def finished_callback(sink, ctx):
-    """Callback to save & send the recorded audio"""
-    filename = f"recording-{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.wav"
-    sink.save(filename)
+    await ctx.send("🎙️ Recording started...")
+    
+    # Recording command using ffmpeg
+    os.system("ffmpeg -y -f dshow -i audio=\"Stereo Mix (Realtek(R) Audio)\" -t 60 output.mp3")
 
-    await ctx.send("Recording stopped! Here’s your file:", file=discord.File(filename))
+    await asyncio.sleep(60)  # Recording for 60 seconds
+
+    await ctx.send("✅ Recording stopped! Sending the file...")
+
+    # Send the file
+    await ctx.send(file=discord.File("output.mp3"))
 
 @bot.command()
 async def stop(ctx):
-    """Command to stop recording"""
-    if ctx.voice_client and ctx.voice_client.recording:
-        ctx.voice_client.stop_recording()
-        await ctx.send("Recording stopped.")
-    else:
-        await ctx.send("I'm not recording.")
+    """Stops the recording (not implemented properly yet)."""
+    await ctx.send("❌ Recording stopped manually! (Stop command not properly implemented yet)")
+
+
+
+
 @bot.command()
 async def dmall(ctx, *, message: str = None):
     if ctx.author.id != OWNER_ID:
