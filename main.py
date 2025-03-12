@@ -677,7 +677,10 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 #vc record
 
 recording = False
-recorded_file = None  # Stores the latest recording filename
+recorded_file = None
+
+# Ensure the recordings folder exists
+os.makedirs("recordings", exist_ok=True)
 
 @bot.command()
 async def join(ctx):
@@ -713,12 +716,9 @@ async def record(ctx):
 
     recording = True
     recorded_file = f"recording_{int(time.time())}.mp3"
-
-    # Save the file in a 'recordings' folder
-    os.makedirs("recordings", exist_ok=True)
     recorded_path = os.path.join("recordings", recorded_file)
 
-    # Ensure FFmpeg captures the correct input (this may need adjustments)
+    # FFmpeg command for recording (Make sure you have a proper audio source)
     process = subprocess.Popen(
         ["ffmpeg", "-y", "-f", "dshow", "-i", "audio=virtual-audio-capturer", recorded_path],
         stdout=subprocess.DEVNULL,
@@ -740,7 +740,14 @@ async def stop(ctx):
     recording = False
     if hasattr(ctx.voice_client, "recording_process"):
         ctx.voice_client.recording_process.terminate()
-        await ctx.send(f"✅ Recording stopped! File saved as `recordings/{recorded_file}`")
+
+        # Ensure the file is saved
+        recorded_path = os.path.join("recordings", recorded_file)
+        if os.path.exists(recorded_path):
+            await ctx.send(f"✅ Recording stopped! File saved as `{recorded_path}`")
+        else:
+            await ctx.send(f"⚠️ Recording stopped but file was not found!")
+
     else:
         await ctx.send("❌ No recording process found!")
 
@@ -756,13 +763,19 @@ async def play(ctx, filename: str = None):
     if filename is None:
         filename = recorded_file  # Play the latest recording
 
-    if filename is None or not os.path.exists(os.path.join("recordings", filename)):
-        await ctx.send(f"❌ File `recordings/{filename}` not found!")
+    if filename is None:
+        await ctx.send("❌ No recent recording found!")
         return
 
-    source = FFmpegPCMAudio(os.path.join("recordings", filename))
+    recorded_path = os.path.join("recordings", filename)
+
+    if not os.path.exists(recorded_path):
+        await ctx.send(f"❌ File `{recorded_path}` not found!")
+        return
+
+    source = FFmpegPCMAudio(recorded_path)
     ctx.voice_client.play(source)
-    await ctx.send(f"▶️ Playing `recordings/{filename}`!")
+    await ctx.send(f"▶️ Playing `{recorded_path}`!")
 
 
 
