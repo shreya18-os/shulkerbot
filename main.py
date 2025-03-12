@@ -740,15 +740,27 @@ async def record(ctx):
 
 @bot.command()
 async def stop(ctx):
-    """Stops recording."""
     global recording
     if not recording:
         await ctx.send("❌ No active recording!")
         return
+    
+    recording = False
 
-    ctx.voice_client.stop_recording()
-    await ctx.send("⏹️ Stopping recording...")
+    # Ensure bot is in a voice channel
+    if not ctx.voice_client:
+        await ctx.send("❌ I'm not in a voice channel!")
+        return
 
+    # Stop FFmpeg process if it exists
+    if hasattr(ctx.voice_client, "recording_process"):
+        ctx.voice_client.recording_process.terminate()
+        ctx.voice_client.recording_process.wait()  # Wait for process to fully stop
+        del ctx.voice_client.recording_process  # Remove the attribute to prevent errors
+
+        await ctx.send("✅ Recording stopped!")
+    else:
+        await ctx.send("⚠️ No recording process found!")
 @bot.command()
 async def play(ctx, filename: str = None):
     """Plays the last recorded audio or a specified file."""
