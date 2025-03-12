@@ -677,11 +677,11 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 #vc record
 
 recording = False
-recorded_file = "recorded_audio.mp3"  # Changed to MP3 for better compatibility
+recorded_file = None  # To store the latest file
 
 @bot.command()
 async def join(ctx):
-    """Joins the user's voice channel."""
+    """Joins the voice channel."""
     if ctx.author.voice:
         channel = ctx.author.voice.channel
         await channel.connect()
@@ -700,8 +700,9 @@ async def leave(ctx):
 
 @bot.command()
 async def record(ctx):
-    """Starts recording the voice chat with unique filenames."""
-    global recording
+    """Starts recording the voice chat."""
+    global recording, recorded_file
+
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
@@ -711,11 +712,9 @@ async def record(ctx):
         return
 
     recording = True
-
-    # Generate a unique filename based on timestamp
-    global recorded_file
     recorded_file = f"recording_{int(time.time())}.mp3"
 
+    # Ensure FFmpeg captures audio properly
     process = subprocess.Popen(
         ["ffmpeg", "-y", "-f", "pulse", "-i", "default", recorded_file],
         stdout=subprocess.DEVNULL,
@@ -729,6 +728,7 @@ async def record(ctx):
 async def stop(ctx):
     """Stops recording and saves the file."""
     global recording
+
     if not recording:
         await ctx.send("❌ No active recording!")
         return
@@ -741,20 +741,24 @@ async def stop(ctx):
         await ctx.send("❌ No recording process found!")
 
 @bot.command()
-async def play(ctx):
-    """Plays the recorded audio."""
+async def play(ctx, filename: str = None):
+    """Plays the last recorded audio or a specific file."""
+    global recorded_file
+
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
-    
-    if not os.path.exists(recorded_file):
-        await ctx.send("❌ No recording found!")
+
+    if filename is None:
+        filename = recorded_file  # Play the latest recording
+
+    if filename is None or not os.path.exists(filename):
+        await ctx.send(f"❌ File `{filename}` not found!")
         return
 
-    source = discord.FFmpegPCMAudio(recorded_file)
+    source = FFmpegPCMAudio(filename)
     ctx.voice_client.play(source)
-    await ctx.send("▶️ Playing the recorded audio!")
-
+    await ctx.send(f"▶️ Playing `{filename}`!")
 
 #Economy Commands
 
