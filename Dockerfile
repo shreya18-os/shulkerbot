@@ -16,9 +16,6 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Ensure PyNaCl dependencies are installed
-RUN pip install --no-cache-dir --force-reinstall pynacl numpy pydub
-
 # Copy project files
 COPY . .
 
@@ -27,6 +24,7 @@ RUN python3 -m venv /app/venv
 
 # Use the virtual environment for pip
 RUN /app/venv/bin/pip install --upgrade pip
+RUN /app/venv/bin/pip install --no-cache-dir --force-reinstall numpy pydub pynacl
 RUN /app/venv/bin/pip install --no-cache-dir --force-reinstall -r requirements.txt
 
 # Set the default command to use the virtual environment
