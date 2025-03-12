@@ -659,8 +659,14 @@ async def join(ctx):
     """Command to make bot join VC"""
     if ctx.author.voice:
         channel = ctx.author.voice.channel
-        vc = await channel.connect()
-        await ctx.send("Joined VC!")
+        if ctx.voice_client:  # If already connected, move to the new VC
+            await ctx.voice_client.move_to(channel)
+        else:
+            try:
+                await channel.connect()
+                await ctx.send(f"Joined {channel.name}!")
+            except Exception as e:
+                await ctx.send(f"Error joining VC: `{e}`")
     else:
         await ctx.send("You're not in a voice channel!")
 
