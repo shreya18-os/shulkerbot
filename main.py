@@ -39,7 +39,6 @@ from pydub import AudioSegment
 
 
 
-
 # Replace with your actual Discord User ID(s)
 ALLOWED_USERS = [1101467683083530331, 987654321098765432]
 
@@ -682,6 +681,9 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
 #vc record
 
+recording = False
+audio_data = []  # Stores recorded audio frames
+
 @bot.command()
 async def join(ctx):
     """Make the bot join the voice channel"""
@@ -704,15 +706,21 @@ async def leave(ctx):
 @bot.command()
 async def record(ctx):
     """Start recording audio in the voice channel"""
-    global recording, audio_data
+    global recording
     if not ctx.voice_client:
         await ctx.send("❌ I'm not in a voice channel!")
         return
 
+    if not ctx.voice_client.is_connected():
+        await ctx.send("❌ I'm not connected to a VC!")
+        return
+
+    if recording:
+        await ctx.send("❌ Already recording!")
+        return
+
     recording = True
-    audio_data = []  # Reset recorded data
-    vc = ctx.voice_client
-    vc.listen(Recorder())  # Start listening
+    ctx.voice_client.start_recording(discord.sinks.WaveSink(), save_recording, ctx)
     await ctx.send("🎙️ Recording started!")
 
 @bot.command()
@@ -724,11 +732,7 @@ async def stop(ctx):
         return
 
     recording = False
-    vc = ctx.voice_client
-    vc.stop_listening()  # Stop listening
-
-    # Convert and save the recorded audio
-    save_recording()
+    ctx.voice_client.stop_recording()
     await ctx.send("✅ Recording stopped! Saved as `recording.wav`.")
 
 @bot.command()
@@ -746,31 +750,14 @@ async def play(ctx):
     ctx.voice_client.play(source)
     await ctx.send("▶️ Playing recording!")
 
-def save_recording():
+def save_recording(sink, ctx):
     """Save the recorded audio to a file"""
-    if not audio_data:
-        return
-
-    # Convert recorded audio frames to NumPy array
-    audio_array = np.concatenate(audio_data, axis=0)
-
-    # Convert NumPy array to raw audio
-    raw_audio = audio_array.tobytes()
-
-    # Save as WAV file
-    with wave.open("recording.wav", "wb") as wf:
-        wf.setnchannels(1)  # Mono
-        wf.setsampwidth(2)  # 16-bit PCM
-        wf.setframerate(48000)  # Standard Discord sample rate
-        wf.writeframes(raw_audio)
-
-class Recorder(discord.AudioSink):
-    """Custom audio recorder"""
-    def write(self, data):
-        global audio_data
-        if recording:
-            audio_data.append(np.frombuffer(data, dtype=np.int16))
-
+    if sink.audio_data:
+        with wave.open("recording.wav", "wb") as wf:
+            wf.setnchannels(1)  # Mono
+            wf.setsampwidth(2)  # 16-bit PCM
+            wf.setframerate(48000)  # Standard Discord sample rate
+            wf.writeframes(sink.audio_data)
 
 
 
