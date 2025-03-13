@@ -1,10 +1,9 @@
-# Use Python 3.10
 FROM python:3.10-slim
 
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
-# Install Git and other dependencies
+# Install git
 RUN apt-get update && \
     apt-get install -y git && \
     rm -rf /var/lib/apt/lists/*
@@ -12,21 +11,17 @@ RUN apt-get update && \
 # Create virtual environment
 RUN python -m venv /app/venv
 
-# Upgrade pip and essential tools
+# Upgrade pip, setuptools and wheel
 RUN /app/venv/bin/pip install --upgrade pip setuptools wheel
 
-# Copy requirements.txt
+# Copy requirements
 COPY requirements.txt .
 
-# **Pass GitHub token securely**
-ARG GH_TOKEN
-RUN git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
-
-# Install dependencies from requirements.txt
+# Install dependencies
 RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-# Copy your bot code
+# Copy the entire bot code
 COPY . .
 
 # Run the bot
-CMD ["/app/venv/bin/python", "main.py"]
+CMD ["/app/venv/bin/python", "bot.py"]
