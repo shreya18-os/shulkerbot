@@ -4,4 +4,6 @@ aiohttp
 requests
 aiosqlite
 asyncio
+discord-ext-voice
+discord.py[voice]
 pynacl
