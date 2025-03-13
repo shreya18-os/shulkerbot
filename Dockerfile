@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     sqlite3 \
     ffmpeg \
+    libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project files
@@ -23,7 +24,7 @@ RUN python3 -m venv /app/venv
 
 # Install dependencies
 RUN /app/venv/bin/pip install --upgrade pip
-RUN /app/venv/bin/pip install --no-cache-dir "discord.py[voice-recorder]" pydub numpy requests
+RUN /app/venv/bin/pip install --no-cache-dir "discord.py[voice-recorder]" pydub numpy requests pynacl
 
 # Set the default command to run the bot
 CMD ["/app/venv/bin/python", "main.py"]
