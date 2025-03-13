@@ -8,3 +8,4 @@ pynacl
 discord-ext-voice
 ffmpeg
 pydub
+git+https://github.com/kkrypt0nn/discord-ext-voice.git
