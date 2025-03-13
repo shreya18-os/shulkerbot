@@ -24,8 +24,7 @@ COPY requirements.txt .
 
 # Install dependencies with GitHub token for discord-ext-voice
 RUN --mount=type=secret,id=GH_TOKEN \
-  /app/venv/bin/pip install --no-cache-dir -r requirements.txt \
-  --extra-index-url "https://kkrypt0nn:$(cat /run/secrets/GH_TOKEN)@github.com/kkrypt0nn/discord-ext-voice.git"
+  /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copy all the code to the app
 COPY . .
