@@ -4,17 +4,11 @@ FROM python:3.11-slim
 # Set the working directory
 WORKDIR /app
 
-# Install system dependencies (including git now)
+# Install system dependencies (including git)
 RUN apt-get update && apt-get install -y \
-    software-properties-common \
-    build-essential \
-    wget \
-    curl \
-    python3-venv \
-    sqlite3 \
+    git \
     ffmpeg \
     libffi-dev \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project files
@@ -26,7 +20,7 @@ RUN python3 -m venv /app/venv
 # Install dependencies
 RUN /app/venv/bin/pip install --upgrade pip
 RUN /app/venv/bin/pip install --no-cache-dir "discord.py[voice]" pydub numpy requests pynacl
-RUN /app/venv/bin/pip install git+https://github.com/kkrypt0nn/discord-ext-voice.git
+RUN /app/venv/bin/pip install --no-cache-dir git+https://github.com/kkrypt0nn/discord-ext-voice.git
 
 # Set the default command to run the bot
 CMD ["/app/venv/bin/python", "main.py"]
