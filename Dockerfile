@@ -1,8 +1,9 @@
 FROM python:3.10-slim
 
+# Set the working directory
 WORKDIR /app
 
-# Install git
+# Install Git
 RUN apt-get update && \
     apt-get install -y git && \
     rm -rf /var/lib/apt/lists/*
@@ -10,20 +11,23 @@ RUN apt-get update && \
 # Create virtual environment
 RUN python -m venv /app/venv
 
-# Install pip, setuptools and wheel
+# Upgrade pip, setuptools, and wheel
 RUN /app/venv/bin/pip install --upgrade pip setuptools wheel
 
-# Authenticate with GitHub token
-RUN git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+# Set the GitHub token argument
+ARG GH_TOKEN
 
-# Copy requirements.txt
+# Configure Git to use the token for GitHub authentication
+RUN git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+
+# Copy the requirements file
 COPY requirements.txt .
 
 # Install dependencies
 RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-# Copy all files
+# Copy the rest of the project files
 COPY . .
 
-# Run bot
-CMD ["/app/venv/bin/python", "main.py"]
+# Set the entry point
+CMD ["/app/venv/bin/python", "bot.py"]
