@@ -12,8 +12,7 @@ RUN /app/venv/bin/pip install --upgrade pip setuptools wheel
 
 COPY requirements.txt .
 
-RUN git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/" && \
-    /app/venv/bin/pip install --no-cache-dir -r requirements.txt
+RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 
 COPY . .
