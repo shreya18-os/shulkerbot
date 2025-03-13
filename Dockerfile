@@ -18,4 +18,4 @@ RUN git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https:/
 
 COPY . .
 
-CMD ["/app/venv/bin/python", "main.py"]  # Replace main.py with your bot's main file
+CMD ["python", "main.py"]
