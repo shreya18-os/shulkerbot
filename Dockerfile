@@ -19,7 +19,8 @@ RUN python3 -m venv /app/venv
 
 # Install dependencies from requirements.txt
 RUN /app/venv/bin/pip install --upgrade pip
-RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
+RUN /app/venv/bin/pip install --no-cache-dir --progress=off -r requirements.txt
+
 
 # Set the default command to run the bot
 CMD ["/app/venv/bin/python", "main.py"]
