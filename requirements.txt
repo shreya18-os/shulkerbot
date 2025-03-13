@@ -1,8 +1,6 @@
-discord.py[voice]==2.3.2
-pynacl
-python-dotenv
-aiohttp
+discord.py[voice]
+pydub
+numpy
 requests
-aiosqlite
-asyncio
+pynacl
 git+https://github.com/kkrypt0nn/discord-ext-voice.git
