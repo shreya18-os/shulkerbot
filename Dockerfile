@@ -12,16 +12,20 @@ RUN apt-get update && \
 # Create virtual environment
 RUN python -m venv /app/venv
 
-# Upgrade pip and install essential tools
+# Upgrade pip and essential tools
 RUN /app/venv/bin/pip install --upgrade pip setuptools wheel
 
 # Copy requirements.txt
 COPY requirements.txt .
 
+# **Pass GitHub token securely**
+ARG GH_TOKEN
+RUN git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+
 # Install dependencies from requirements.txt
 RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire bot code
+# Copy your bot code
 COPY . .
 
 # Run the bot
