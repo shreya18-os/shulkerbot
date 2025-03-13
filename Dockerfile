@@ -14,7 +14,6 @@ COPY requirements.txt .
 
 RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-
 COPY . .
 
-CMD ["python", "main.py"]
+CMD ["/app/venv/bin/python", "main.py"]  # Your bot's main file
