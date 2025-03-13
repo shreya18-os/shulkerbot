@@ -6,12 +6,8 @@ WORKDIR /app
 
 # Install required system dependencies
 RUN apt-get update && apt-get install -y \
-    software-properties-common \
     build-essential \
-    wget \
-    curl \
     python3-venv \
-    sqlite3 \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
@@ -21,12 +17,10 @@ COPY . .
 # Create and activate a virtual environment
 RUN python3 -m venv /app/venv
 
-# Use the virtual environment for pip
+# Install dependencies in the virtual environment
 RUN /app/venv/bin/pip install --upgrade pip
-RUN /app/venv/bin/pip install --no-cache-dir --force-reinstall -r requirements.txt
+RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-# Ensure all required packages are installed
-RUN /app/venv/bin/pip install --no-cache-dir --force-reinstall discord.py pynacl ffmpeg pydub numpy requests
-
-# Set the default command to use the virtual environment
+# Set the default command to run the bot
 CMD ["/app/venv/bin/python", "main.py"]
+
