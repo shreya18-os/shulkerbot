@@ -4,7 +4,7 @@ FROM python:3.10-slim
 # Set the working directory
 WORKDIR /app
 
-# Install dependencies for voice support and Git
+# Install system-level dependencies for voice support
 RUN apt-get update && apt-get install -y \
     git \
     ffmpeg \
@@ -25,7 +25,7 @@ RUN pip install --upgrade pip setuptools wheel
 # Copy requirements.txt
 COPY requirements.txt .
 
-# Install dependencies
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy all the bot files
