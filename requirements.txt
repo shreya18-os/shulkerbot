@@ -1,6 +1,6 @@
 discord.py[voice]
+discord-ext-voice @ git+https://github.com/kkrypt0nn/discord-ext-voice.git
+pynacl
 pydub
 numpy
 requests
-pynacl
-git+https://github.com/kkrypt0nn/discord-ext-voice.git
