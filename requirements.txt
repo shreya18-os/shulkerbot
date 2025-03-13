@@ -4,6 +4,7 @@ aiohttp
 requests
 aiosqlite
 asyncio
-discord-ext-voice
-discord.py[voice]
 pynacl
+discord-ext-voice
+ffmpeg
+pydub
