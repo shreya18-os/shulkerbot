@@ -1,10 +1,10 @@
-# Use the official Python image
+# Use Python Slim image
 FROM python:3.10-slim
 
 # Set the working directory
 WORKDIR /app
 
-# Install system-level dependencies for voice support
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     git \
     ffmpeg \
@@ -13,28 +13,21 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-
 # Create virtual environment
 RUN python -m venv /app/venv
 
-# Activate virtual environment
-ENV PATH="/app/venv/bin:$PATH"
-
-# Upgrade pip
-RUN pip install --upgrade pip setuptools wheel
+# Upgrade pip, setuptools, wheel
+RUN /app/venv/bin/pip install --upgrade pip setuptools wheel
 
 # Copy requirements.txt
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --upgrade pip setuptools wheel
-RUN python -m pip install --no-cache-dir -r requirements.txt
+# Install dependencies (including discord-ext-voice)
+RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt \
+    --extra-index-url https://kkrypt0nn:$GH_TOKEN@github.com/kkrypt0nn/discord-ext-voice.git
 
-
-
-
-# Copy all the bot files
+# Copy all bot files
 COPY . .
 
 # Run the bot
-CMD ["python", "main.py"]
+CMD ["/app/venv/bin/python", "bot.py"]
