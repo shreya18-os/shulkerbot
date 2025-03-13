@@ -13,7 +13,7 @@ import sqlite3
 import wave
 import asyncio
 import numpy as np
-from discord.sinks import WaveSink
+from discord.ext.sinks import WaveSink
 from discord import FFmpegPCMAudio
 from discord.ui import Button, View
 from discord import app_commands
