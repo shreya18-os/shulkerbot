@@ -25,7 +25,8 @@ RUN python3 -m venv /app/venv
 RUN /app/venv/bin/pip install --upgrade pip setuptools wheel
 
 # Install all dependencies
-RUN /app/venv/bin/pip install --no-cache-dir "discord.py[voice]" discord-ext-voice pydub numpy requests
+RUN /app/venv/bin/pip install --no-cache-dir "discord.py[voice]" pydub numpy requests
+
 
 
 # Set the default command to run the bot
