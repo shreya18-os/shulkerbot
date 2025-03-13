@@ -1,11 +1,8 @@
-discord.py==2.3.2
+discord.py[voice]==2.3.2
+pynacl
 python-dotenv
 aiohttp
 requests
 aiosqlite
 asyncio
-pynacl
-discord-ext-voice
-ffmpeg
-pydub
 git+https://github.com/kkrypt0nn/discord-ext-voice.git
