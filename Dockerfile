@@ -4,8 +4,14 @@ FROM python:3.10-slim
 # Set the working directory
 WORKDIR /app
 
-# Install git to clone discord-ext-voice
-RUN apt-get update && apt-get install -y git ffmpeg
+# Install dependencies for voice support and Git
+RUN apt-get update && apt-get install -y \
+    git \
+    ffmpeg \
+    gcc \
+    libffi-dev \
+    python3-dev \
+    && apt-get clean
 
 # Create virtual environment
 RUN python -m venv /app/venv
@@ -14,7 +20,7 @@ RUN python -m venv /app/venv
 ENV PATH="/app/venv/bin:$PATH"
 
 # Upgrade pip
-RUN pip install --upgrade pip
+RUN pip install --upgrade pip setuptools wheel
 
 # Copy requirements.txt
 COPY requirements.txt .
