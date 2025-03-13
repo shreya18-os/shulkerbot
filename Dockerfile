@@ -4,7 +4,7 @@ FROM python:3.11-slim
 # Set the working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (including git now)
 RUN apt-get update && apt-get install -y \
     software-properties-common \
     build-essential \
@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     sqlite3 \
     ffmpeg \
     libffi-dev \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project files
