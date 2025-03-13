@@ -15,6 +15,7 @@ COPY requirements.txt .
 RUN git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/" && \
     /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
+
 COPY . .
 
 CMD ["/app/venv/bin/python", "main.py"]  # Replace main.py with your bot's main file
