@@ -1,5 +1,5 @@
 discord.py[voice]
-discord-ext-voice @ git+https://github.com/kkrypt0nn/discord-ext-voice.git
+git+https://github.com/kkrypt0nn/discord-ext-voice.git#egg=discord-ext-voice
 pynacl
 pydub
 numpy
