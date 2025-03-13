@@ -2,7 +2,6 @@ import os
 import subprocess
 import sys
 import discord
-import nacl
 import random
 import traceback
 import requests
@@ -10,32 +9,25 @@ import aiohttp
 import time
 import json
 import sqlite3
-import wave
 import asyncio
 import numpy as np
-from discord.ext.sinks import WaveSink
-from discord import FFmpegPCMAudio
 from discord.ui import Button, View
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
-from pydub import AudioSegment
 
 # Function to install dependencies
 def install(package):
     subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "--force-reinstall", package], check=True)
 
 # Ensure required dependencies are installed
-required_packages = ["discord.py", "pynacl", "ffmpeg", "pydub", "numpy"]
+required_packages = ["discord.py", "numpy", "aiohttp", "requests"]
 
 for package in required_packages:
     try:
         __import__(package.replace("-", "_"))
     except ImportError:
         install(package)
-
-# Manually install PyNaCl as it's required for voice
-install("pynacl")
 
 
 #np!
@@ -678,105 +670,7 @@ async def slots(ctx, bet_amount: int):
 OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 
 
-#vc record
 
-recording = False
-recorded_file = None
-recordings_folder = "recordings"
-
-# Ensure the recordings folder exists
-os.makedirs(recordings_folder, exist_ok=True)
-
-@bot.command()
-async def join(ctx):
-    if ctx.author.voice:
-        channel = ctx.author.voice.channel
-        await channel.connect()
-        await ctx.send(f"✅ Joined **{channel.name}**!")
-    else:
-        await ctx.send("❌ You must be in a voice channel!")
-
-@bot.command()
-async def leave(ctx):
-    if ctx.voice_client:
-        await ctx.voice_client.disconnect()
-        await ctx.send("👋 Left the voice channel!")
-    else:
-        await ctx.send("❌ I'm not in a voice channel!")
-
-@bot.command()
-async def record(ctx):
-    global recording, recorded_file
-
-    if recording:
-        await ctx.send("❌ Already recording!")
-        return
-
-    if not ctx.voice_client:
-        await ctx.send("❌ I'm not in a voice channel!")
-        return
-
-    # Generate file path
-    recorded_file = os.path.join(recordings_folder, f"recording_{int(time.time())}.wav")
-
-    # Start recording
-    recording = True
-    sink = WaveSink()
-    ctx.voice_client.start_recording(sink, lambda _: None)
-
-    await ctx.send(f"🎙️ Recording started! File will be saved as `{recorded_file}`")
-
-@bot.command()
-async def stop(ctx):
-    global recording, recorded_file
-
-    if not recording:
-        await ctx.send("❌ No active recording!")
-        return
-
-    if not ctx.voice_client:
-        await ctx.send("❌ I'm not in a voice channel!")
-        return
-
-    # Stop recording
-    recording = False
-    sink = ctx.voice_client.stop_recording()
-
-    # Save the file
-    if sink.audio_data:
-        with open(recorded_file, "wb") as f:
-            f.write(sink.audio_data)
-        await ctx.send(f"✅ Recording saved! File: `{recorded_file}`")
-    else:
-        await ctx.send("⚠️ Recording stopped, but file was NOT saved!")
-
-@bot.command()
-async def play(ctx):
-    if not ctx.voice_client:
-        await ctx.send("❌ I'm not in a voice channel!")
-        return
-
-    # Find the most recent recording
-    files = sorted(
-        [f for f in os.listdir(recordings_folder) if f.endswith(".wav")],
-        reverse=True
-    )
-
-    if not files:
-        await ctx.send("❌ No valid recordings found!")
-        return
-
-    latest_file = os.path.join(recordings_folder, files[0])
-
-    # Check if file exists before playing
-    if not os.path.exists(latest_file):
-        await ctx.send(f"❌ File {latest_file} not found!")
-        return
-
-    # Play the file
-    source = discord.FFmpegPCMAudio(latest_file)
-    ctx.voice_client.play(source)
-    await ctx.send(f"▶️ Playing: `{latest_file}`")
 
 
 
