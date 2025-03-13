@@ -24,8 +24,9 @@ COPY requirements.txt .
 
 # Install dependencies with GitHub token as an argument
 ARG GH_TOKEN
-RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt \
-  --extra-index-url https://$GH_TOKEN@github.com/kkrypt0nn/discord-ext-voice.git
+RUN git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
+
 
 # Copy all the code to the app
 COPY . .
