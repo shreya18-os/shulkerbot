@@ -13,6 +13,7 @@ import sqlite3
 import wave
 import asyncio
 import numpy as np
+from discord.sinks import WaveSink
 from discord import FFmpegPCMAudio
 from discord.ui import Button, View
 from discord import app_commands
@@ -680,11 +681,11 @@ OWNER_ID = 1101467683083530331  # Replace with your Discord ID
 #vc record
 
 recording = False
+recorded_file = None
 recordings_folder = "recordings"
 
-# Ensure recordings folder exists
-if not os.path.exists(recordings_folder):
-    os.makedirs(recordings_folder)
+# Ensure the recordings folder exists
+os.makedirs(recordings_folder, exist_ok=True)
 
 @bot.command()
 async def join(ctx):
@@ -703,57 +704,51 @@ async def leave(ctx):
     else:
         await ctx.send("❌ I'm not in a voice channel!")
 
-recording = False
-recordings_folder = "recordings"
-
-# Ensure the recordings folder exists
-if not os.path.exists(recordings_folder):
-    os.makedirs(recordings_folder)
-
-recordings_path = "/tmp/recordings/"
-os.makedirs(recordings_path, exist_ok=True)
-
 @bot.command()
 async def record(ctx):
-    global recording, recorded_file, recording_sink
+    global recording, recorded_file
 
     if recording:
         await ctx.send("❌ Already recording!")
         return
 
-    recorded_file = os.path.join(recordings_path, f"recording_{int(time.time())}.wav")
-    recording = True
-    recording_sink = await ctx.author.voice.channel.connect()
-    recording_sink.start_recording(recorded_file)
+    if not ctx.voice_client:
+        await ctx.send("❌ I'm not in a voice channel!")
+        return
 
-    await ctx.send(f"🎙️ Recording started! File: `{recorded_file}`")
+    # Generate file path
+    recorded_file = os.path.join(recordings_folder, f"recording_{int(time.time())}.wav")
+
+    # Start recording
+    recording = True
+    sink = WaveSink()
+    ctx.voice_client.start_recording(sink, lambda _: None)
+
+    await ctx.send(f"🎙️ Recording started! File will be saved as `{recorded_file}`")
+
 @bot.command()
 async def stop(ctx):
-    global recording, recorded_file, recording_sink
+    global recording, recorded_file
 
     if not recording:
         await ctx.send("❌ No active recording!")
         return
 
+    if not ctx.voice_client:
+        await ctx.send("❌ I'm not in a voice channel!")
+        return
+
     # Stop recording
     recording = False
-    recording_sink.vc.stop_recording()
+    sink = ctx.voice_client.stop_recording()
 
-    # Check if the file exists
-    if recorded_file and os.path.exists(recorded_file):
-        file_size = os.path.getsize(recorded_file)
-        await ctx.send(f"✅ Recording saved! File: `{recorded_file}` ({file_size} bytes)")
+    # Save the file
+    if sink.audio_data:
+        with open(recorded_file, "wb") as f:
+            f.write(sink.audio_data)
+        await ctx.send(f"✅ Recording saved! File: `{recorded_file}`")
     else:
-        await ctx.send(f"⚠️ Recording stopped, but file was NOT found! Expected path: `{recorded_file}`")
-
-    # List all files in the recordings folder
-    files = os.listdir("recordings")
-    await ctx.send(f"📂 Current recordings: {', '.join(files) if files else 'No files found!'}")
-
-    # Reset
-    recorded_file = None
-    recording_sink = None
-
+        await ctx.send("⚠️ Recording stopped, but file was NOT saved!")
 
 @bot.command()
 async def play(ctx):
@@ -761,9 +756,9 @@ async def play(ctx):
         await ctx.send("❌ I'm not in a voice channel!")
         return
 
-    # Get all valid audio files, ignoring `.gitkeep`
+    # Find the most recent recording
     files = sorted(
-        [f for f in os.listdir("recordings") if f.endswith(".wav") or f.endswith(".mp3")],
+        [f for f in os.listdir(recordings_folder) if f.endswith(".wav")],
         reverse=True
     )
 
@@ -771,7 +766,7 @@ async def play(ctx):
         await ctx.send("❌ No valid recordings found!")
         return
 
-    latest_file = os.path.join("recordings", files[0])  # Get newest recording
+    latest_file = os.path.join(recordings_folder, files[0])
 
     # Check if file exists before playing
     if not os.path.exists(latest_file):
@@ -781,7 +776,8 @@ async def play(ctx):
     # Play the file
     source = discord.FFmpegPCMAudio(latest_file)
     ctx.voice_client.play(source)
-    await ctx.send(f"▶️ Playing: {latest_file}")
+    await ctx.send(f"▶️ Playing: `{latest_file}`")
+
 
 
 
