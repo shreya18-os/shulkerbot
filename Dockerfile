@@ -7,6 +7,7 @@ WORKDIR /app
 # Install system-level dependencies for voice support
 RUN apt-get update && apt-get install -y \
     git \
+    && rm -rf /var/lib/apt/lists/*
     ffmpeg \
     gcc \
     libffi-dev \
@@ -26,7 +27,9 @@ RUN pip install --upgrade pip setuptools wheel
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN python -m pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir -r requirements.txt
+
 
 
 # Copy all the bot files
