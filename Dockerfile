@@ -2,6 +2,9 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
+# Install Git
+RUN apt-get update && apt-get install -y git
+
 # Set the GitHub Token
 ARG GH_TOKEN
 
