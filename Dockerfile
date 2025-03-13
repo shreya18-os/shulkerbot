@@ -22,9 +22,10 @@ RUN /app/venv/bin/pip install --upgrade pip setuptools wheel
 # Copy requirements file
 COPY requirements.txt .
 
-# Install dependencies with GitHub token for discord-ext-voice
-RUN --mount=type=secret,id=GH_TOKEN \
-  /app/venv/bin/pip install --no-cache-dir -r requirements.txt
+# Install dependencies with GitHub token as an argument
+ARG GH_TOKEN
+RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt \
+  --extra-index-url https://$GH_TOKEN@github.com/kkrypt0nn/discord-ext-voice.git
 
 # Copy all the code to the app
 COPY . .
