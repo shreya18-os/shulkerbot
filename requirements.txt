@@ -1,6 +1,5 @@
 discord.py[voice]
-git+https://${GH_TOKEN}@github.com/kkrypt0nn/discord-ext-voice.git
-
+git+https://github.com/kkrypt0nn/discord-ext-voice.git
 pynacl
 pydub
 numpy
