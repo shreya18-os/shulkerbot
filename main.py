@@ -998,7 +998,7 @@ async def setbalance(ctx, member: discord.Member, amount: int):
                             conn.commit()  # Save changes
                             conn.close()
 
-                            await ctx.send(f"✅ Set {member.mention}'s balance to **{amount} coins**!")
+                            await ctx.send(f" <a:verified1:1349787913134800917> Set {member.mention}'s balance to **{amount} coins**!")
 
                             # **Extra Debugging: Check if balance updated**
                             conn = sqlite3.connect("economy.db")
