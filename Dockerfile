@@ -7,12 +7,12 @@ WORKDIR /app
 # Install system-level dependencies for voice support
 RUN apt-get update && apt-get install -y \
     git \
-    && rm -rf /var/lib/apt/lists/*
     ffmpeg \
     gcc \
     libffi-dev \
     python3-dev \
-    && apt-get clean
+    && rm -rf /var/lib/apt/lists/*
+
 
 # Create virtual environment
 RUN python -m venv /app/venv
