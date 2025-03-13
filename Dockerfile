@@ -1,10 +1,10 @@
-# Use Python Slim image
+# Base image
 FROM python:3.10-slim
 
 # Set the working directory
 WORKDIR /app
 
-# Install dependencies
+# Install required packages
 RUN apt-get update && apt-get install -y \
     git \
     ffmpeg \
@@ -16,18 +16,19 @@ RUN apt-get update && apt-get install -y \
 # Create virtual environment
 RUN python -m venv /app/venv
 
-# Upgrade pip, setuptools, wheel
+# Activate virtual environment and upgrade pip
 RUN /app/venv/bin/pip install --upgrade pip setuptools wheel
 
-# Copy requirements.txt
+# Copy requirements file
 COPY requirements.txt .
 
-# Install dependencies (including discord-ext-voice)
-RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt \
-    --extra-index-url https://kkrypt0nn:$GH_TOKEN@github.com/kkrypt0nn/discord-ext-voice.git
+# Install dependencies with GitHub token for discord-ext-voice
+RUN --mount=type=secret,id=GH_TOKEN \
+  /app/venv/bin/pip install --no-cache-dir -r requirements.txt \
+  --extra-index-url "https://kkrypt0nn:$(cat /run/secrets/GH_TOKEN)@github.com/kkrypt0nn/discord-ext-voice.git"
 
-# Copy all bot files
+# Copy all the code to the app
 COPY . .
 
-# Run the bot
+# Set the entry point for running the bot
 CMD ["/app/venv/bin/python", "bot.py"]
