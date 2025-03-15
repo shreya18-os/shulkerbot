@@ -98,72 +98,67 @@ async def on_ready():
 # Define the /help command
 @bot.tree.command(name="help", description="Shows all available commands")
 async def help_command(interaction: discord.Interaction):
-     embed = discord.Embed(title=" <a:star1:1345361132512088178> **SHULKER BOT COMMANDS** <a:star1:1345361132512088178> ", color=discord.Color.gold())
-     embed.set_thumbnail(url=bot.user.avatar.url)
+    embed = discord.Embed(title=" <a:star1:1345361132512088178> **SHULKER BOT COMMANDS** <a:star1:1345361132512088178> ", color=discord.Color.gold())
+    embed.set_thumbnail(url=bot.user.avatar.url)
 
-            embed.add_field(name="<:moderation:1345359844445524041> **Moderation**", 
-                value="╭───────────⟡\n"
-                      "│ <:kick:1345360371002900550> `.kick <user>`\n"
-                      "│ <:ban:1345360761236488276> `.ban <user>`\n"
-                      "│ <:unban:1345361440969724019> `.unban <user>`\n"
-                      "│ <a:purge:1345361946324631644> `.purge <amount>`\n"
-                      "│ <:dm:1345362152831320179> `.dm <user> <message>`\n"
-                      "│ <:dm:1345362152831320179> `.dmall <message>`\n"
-                      "│ <:timeout:1345362419475546173> `.timeout <user> <duration_in_seconds> [reason]`\n"
-                      "│ <:tmremove:1345362837610168321> `.removetimeout <user>`\n"
-                      "╰───────────⟡", inline=False)
+    embed.add_field(name="<:moderation:1345359844445524041> **Moderation**", 
+                    value="╭───────────⟡\n"
+                          "│ <:kick:1345360371002900550> `.kick <user>`\n"
+                          "│ <:ban:1345360761236488276> `.ban <user>`\n"
+                          "│ <:unban:1345361440969724019> `.unban <user>`\n"
+                          "│ <a:purge:1345361946324631644> `.purge <amount>`\n"
+                          "│ <:dm:1345362152831320179> `.dm <user> <message>`\n"
+                          "│ <:dm:1345362152831320179> `.dmall <message>`\n"
+                          "│ <:timeout:1345362419475546173> `.timeout <user> <duration_in_seconds> [reason]`\n"
+                          "│ <:tmremove:1345362837610168321> `.removetimeout <user>`\n"
+                          "╰───────────⟡", inline=False)
 
+    embed.add_field(name="<a:economy:1345373409659588661> **Economy**", 
+                    value="╭───────────⟡\n"
+                          "│ <a:balance:1345373618070097982> `.balance / .bal`\n"
+                          "│ <a:daily:1345377114223935519> `.daily`\n"
+                          "│ <a:cf:1345374098427084922> `.cf <amount> <heads/tails> [X2 MONEY]`\n"
+                          "│ <a:set:1345374633666416725> `.setbalance <user> <amount>`\n"
+                          "│ <a:slots:1345374871734980608> `.slots <amount> [X5 MONEY]`\n"
+                          "│ <:gcoin:1345375137100464168> `.give <user> <amount>`\n"
+                          "│ <a:dice:1345375794490507274> `.dice <amount> [X2 MONEY]`\n"
+                          "│ <a:trophy:1345379999999999999> `.top` (Leaderboard of richest users)\n"
+                          "│ <:gcoin:1345375137100464168> `.blackjack <amount>` [Beat the dealer!]\n"
+                          "╰───────────⟡", inline=False)
 
+    embed.add_field(name="<:fun:1345375490965245996> **Fun**", 
+                    value="╭───────────⟡\n"
+                          "│ <a:dice:1345375794490507274> `.roll`\n"
+                          "│ 🪙 `.flip`\n"
+                          "│ <:funny:1345378490358173819> `.joke`\n"
+                          "│ <:meme:1345378712907939902> `.meme`\n"
+                          "╰───────────⟡", inline=False)
 
-            embed.add_field(name="<a:economy:1345373409659588661> **Economy**", 
-                value="╭───────────⟡\n"
-                      "│ <a:balance:1345373618070097982> `.balance / .bal`\n"
-                      "│ <a:daily:1345377114223935519> `.daily`\n"
-                      "│ <a:cf:1345374098427084922> `.cf <amount> <heads/tails> [X2 MONEY]`\n"
-                      "│ <a:set:1345374633666416725> `.setbalance <user> <amount>`\n"
-                      "│ <a:slots:1345374871734980608> `.slots <amount> [X5 MONEY]`\n"
-                      "│ <:gcoin:1345375137100464168> `.give <user> <amount>`\n"
-                      "│ <a:dice:1345375794490507274> `.dice <amount> [X2 MONEY]`\n"
-                      "│ <a:trophy:1345379999999999999> `.top` (Leaderboard of richest users)\n"
-                      "│ <:gcoin:1345375137100464168> `.blackjack <amount>` [Beat the dealer!]\n"
-                      "╰───────────⟡", inline=False)
+    embed.add_field(name="<a:gift1:1345383111877202021> **Giveaway**", 
+                    value="╭───────────⟡\n"
+                          "│ <a:giveaway21:1345378924481347584> `.giveaway <duration_in_seconds> <prize>`\n"
+                          "│ <:refresh:1345379475638063115> `.reroll <message_id>`\n"
+                          "│ <:gend:1345379981672316998> `.gend <message_id>`\n"
+                          "╰───────────⟡", inline=False)
 
+    embed.add_field(name="📨 **Invites**", 
+                    value="╭───────────⟡\n"
+                          "│ <:invites:1345380333222367285> `.invites <user>`\n"
+                          "│ <:rinvites:1345380642342572193> `.resetinvites <user>`\n"
+                          "│ <a:nuke:1345380973096734731> `.resetwholeserverinvite`\n"
+                          "╰───────────⟡", inline=False)
 
+    embed.add_field(name="<:utility:1345381139354746984> **Utility**", 
+                    value="╭───────────⟡\n"
+                          "│ <a:ping:1345381376433717269> `.ping`\n"
+                          "│ <:help:1345381592335646750> `.help`\n"
+                          "│ <a:message:1345402517277638762> `.say`\n"
+                          "│ <:embed:1345402784039571487> `.embed`\n"
+                          "│ <a:Serverinfo:1345403530701176873> `.serverinfo`\n"
+                          "╰───────────⟡", inline=False)
 
+    await interaction.response.send_message(embed=embed)
 
-            embed.add_field(name="<:fun:1345375490965245996> **Fun**", 
-                            value="╭───────────⟡\n"
-                                  "│ <a:dice:1345375794490507274> `.roll`\n"
-                                  "│ 🪙 `.flip`\n"
-                                  "│ <:funny:1345378490358173819> `.joke`\n"
-                                  "│ <:meme:1345378712907939902> `.meme`\n"
-                                  "╰───────────⟡", inline=False)
-
-
-            embed.add_field(name="<a:gift1:1345383111877202021> **Giveaway**", 
-                            value="╭───────────⟡\n"
-                                  "│ <a:giveaway21:1345378924481347584> `.giveaway <duration_in_seconds> <prize>`\n"
-                                  "│ <:refresh:1345379475638063115> `.reroll <message_id>`\n"
-                                  "│ <:gend:1345379981672316998> `.gend <message_id>`\n"
-                                  "╰───────────⟡", inline=False)
-
-
-            embed.add_field(name="📨 **Invites**", 
-                            value="╭───────────⟡\n"
-                                  "│ <:invites:1345380333222367285> `.invites <user>`\n"
-                                  "│ <:rinvites:1345380642342572193> `.resetinvites <user>`\n"
-                                  "│ <a:nuke:1345380973096734731> `.resetwholeserverinvite`\n"
-                                  "╰───────────⟡", inline=False)
-
-
-            embed.add_field(name="<:utility:1345381139354746984> **Utility**", 
-                            value="╭───────────⟡\n"
-                                  "│ <a:ping:1345381376433717269> `.ping`\n"
-                                  "│ <:help:1345381592335646750> `.help`\n"
-                                  "│ <a:message:1345402517277638762> `.say`\n"
-                                  "│ <:embed:1345402784039571487> `.embed`\n"
-                                  "│ <a:Serverinfo:1345403530701176873> `.serverinfo`\n"
-                                  "╰───────────⟡", inline=False)
     
 # Help Command
 @bot.command()
