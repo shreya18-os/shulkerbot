@@ -99,7 +99,7 @@ async def on_ready():
 @bot.tree.command(name="help", description="Shows all available commands")
 async def help_command(interaction: discord.Interaction):
      embed = discord.Embed(title=" <a:star1:1345361132512088178> **SHULKER BOT COMMANDS** <a:star1:1345361132512088178> ", color=discord.Color.gold())
-            embed.set_thumbnail(url=bot.user.avatar.url)
+     embed.set_thumbnail(url=bot.user.avatar.url)
 
             embed.add_field(name="<:moderation:1345359844445524041> **Moderation**", 
                 value="╭───────────⟡\n"
