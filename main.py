@@ -583,6 +583,27 @@ async def dm(ctx, user: discord.User, *, message):
     except:
         await ctx.send(f"❌ Failed to send a DM to {user.mention}. They may have DMs disabled.")
 
+
+@bot.command()
+async def dmall(ctx, *, message: str):
+    if ctx.author.id != 1101467683083530331:
+        return await ctx.send("❌ You are not authorized to use this command.")
+
+    await ctx.message.delete()
+    sent = 0
+    failed = 0
+
+    for member in ctx.guild.members:
+        if member.bot or member == ctx.author:
+            continue
+        try:
+            await member.send(message)
+            sent += 1
+        except:
+            failed += 1
+
+    await ctx.send(f"✅ Message sent to {sent} members.\n❌ Failed to send to {failed} members.", delete_after=10)
+
 # Note: We're using SQLite (economy.db) for all economy functions now
 # These JSON functions aren't being used and can be removed
 
