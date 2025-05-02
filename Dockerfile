@@ -3,16 +3,14 @@ FROM node:18 AS node-builder
 
 WORKDIR /app
 
-# Prevent husky errors
+# Prevent husky Git hook setup
 ENV HUSKY=0
 
-# Copy only package files first
+# Copy and install only package files
 COPY package*.json ./
-
-# Install Node.js dependencies
 RUN npm install --legacy-peer-deps --force
 
-# Copy the rest of the Node.js app
+# Copy source files after installing dependencies
 COPY . .
 
 # ----------- Python Final Stage -----------
@@ -20,25 +18,23 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install git
+# Install git, curl, and certificates (needed for requests/disnake/etc)
 RUN apt-get update && \
-    apt-get install -y git && \
+    apt-get install -y git curl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Setup venv
+# Create virtual environment
 RUN python -m venv /app/venv
 
 # Upgrade pip and tools
 RUN /app/venv/bin/pip install --upgrade pip setuptools wheel
 
-# Copy Python dependencies
-COPY requirements.txt .
-
-# Install Python dependencies
+# Copy requirements and install them
+COPY requirements.txt ./
 RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-# Copy everything from Node.js stage
+# Copy full project including node_modules from node-builder
 COPY --from=node-builder /app /app
 
-# Set entry point
+# Start the bot
 CMD ["/app/venv/bin/python", "main.py"]
