@@ -394,7 +394,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS invites (
              joins INTEGER DEFAULT 0,
              leaves INTEGER DEFAULT 0,
              fakes INTEGER DEFAULT 0,
-             rejoins INTEGER DEFAULT 0)''')F
+             rejoins INTEGER DEFAULT 0)''')
 conn.commit()
 conn.close()
 
