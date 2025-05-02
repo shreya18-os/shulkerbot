@@ -394,7 +394,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS invites (
              joins INTEGER DEFAULT 0,
              leaves INTEGER DEFAULT 0,
              fakes INTEGER DEFAULT 0,
-             rejoins INTEGER DEFAULT 0)''')
+             rejoins INTEGER DEFAULT 0)''')F
 conn.commit()
 conn.close()
 
@@ -503,7 +503,8 @@ async def on_message(message):
         "who made you?": "I was created by **Shreyansh GameTube**! 🔥",
         "what is lifesteal smp?": "Lifesteal SMP is a Minecraft mode where you **steal hearts** from enemies! ❤️⚔️",
         "good bot": "Thank you! 😊",
-        "<@1101467683083530331>": "RESPECTIVELY, PLS DON'T PING THE **__OWNER!__**",
+        "<@1101467683083530331>": "Pinging Owner can cause to mute.",
+        "<@1343924621094948884>": "Hello There! I'm a 24/7 bot made by <@1101467683083530331> for more, run `.help`",
     }
 
     # Convert message to lowercase for case-insensitive matching
