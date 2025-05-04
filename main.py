@@ -13,7 +13,7 @@ import asyncio
 import numpy as np
 from discord.ui import Button, View
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 from datetime import datetime, timedelta
 
 # Function to install dependencies
@@ -29,6 +29,11 @@ for package in required_packages:
     except ImportError:
         install(package)
 
+
+#np!
+
+
+
 # Replace with your actual Discord User ID(s)
 ALLOWED_USERS = [1101467683083530331, 987654321098765432]
 
@@ -40,67 +45,18 @@ def is_allowed_user():
         return True
     return commands.check(predicate)
 
-# Provided Guild and Channel IDs
-GUILD_ID = 1213143823853690920  # Guild ID (Server ID)
-CHANNEL_ID = 1340941979168538625  # Channel ID (Voice Channel ID)
-
-# Bot setup
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 intents.members = True
 intents = discord.Intents.all()
 bot = commands.Bot(
-    command_prefix=".",
-    intents=intents,
-    help_command=None,
-    http_timeout=aiohttp.ClientTimeout(total=60),
-    rate_limit_retry=True
+    command_prefix=".", 
+    intents=intents, 
+    help_command=None, 
+    http_timeout=aiohttp.ClientTimeout(total=60),  
+    rate_limit_retry=True  
 )
-
-@bot.event
-async def on_ready():
-    print(f'Logged in as {bot.user}')
-
-    # Get the guild (server) using the Guild ID
-    guild = bot.get_guild(GUILD_ID)
-    if guild is None:
-        print(f"Guild with ID {GUILD_ID} not found.")
-        return
-
-    # Get the voice channel using the Channel ID
-    channel = guild.get_channel(CHANNEL_ID)
-    if channel is None:
-        print(f"Channel with ID {CHANNEL_ID} not found.")
-        return
-
-    # Ensure the bot joins the channel if it's not already connected
-    if isinstance(channel, discord.VoiceChannel):
-        if not channel.guild.voice_client:
-            await channel.connect()
-            print(f'Bot connected to {channel.name}')
-        else:
-            print(f'Bot is already in {channel.name}')
-
-    # Start the loop to ensure the bot stays connected to the channel
-    keep_in_voice_channel.start()
-
-@tasks.loop(seconds=60)  # Check every 60 seconds (adjust if necessary)
-async def keep_in_voice_channel():
-    guild = bot.get_guild(GUILD_ID)
-    channel = guild.get_channel(CHANNEL_ID)
-
-    if isinstance(channel, discord.VoiceChannel):
-        if not channel.guild.voice_client:
-            await channel.connect()
-            print(f'Bot reconnected to {channel.name}')
-
-@bot.command()
-async def stop(ctx):
-    """Stop the bot from staying in the voice channel."""
-    if ctx.voice_client:
-        await ctx.voice_client.disconnect()
-        await ctx.send("Bot has left the voice channel.")
 
 
 # Do not create session at module level
