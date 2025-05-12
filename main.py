@@ -333,11 +333,10 @@ class BlackjackButton(discord.ui.View):
         conn = sqlite3.connect("economy.db")
         c = conn.cursor()
         if player_won:
-            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet * 2, self.player.id))  # **Changed from 3x to 2x**
-        elif player_won is False:
-            pass  # Coins were already deducted
-        else:
+            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet * 2, self.player.id))
+        elif player_won is None:
             c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet, self.player.id))  # Refund on tie
+        # No need to subtract on loss because it's already subtracted at start
         conn.commit()
         conn.close()
 
@@ -362,18 +361,20 @@ async def blackjack(ctx, bet: int):
     result = c.fetchone()
 
     if result is None:
-        balance = 500  # Default balance for new users
+        balance = 500
         c.execute("INSERT INTO economy (user_id, balance, last_daily) VALUES (?, ?, ?)", (user_id, balance, 0))
         conn.commit()
     else:
         balance = result[0]
 
-    # Check if user has enough balance
     if balance < bet or bet <= 0:
         conn.close()
         return await ctx.send("❌ You don't have enough coins to bet!")
 
-    conn.close()  # Close DB here, we'll update it later after the game result.
+    # Deduct the bet up front
+    c.execute("UPDATE economy SET balance = balance - ? WHERE user_id = ?", (bet, user_id))
+    conn.commit()
+    conn.close()
 
     view = BlackjackButton(ctx.author, bet)
     embed = discord.Embed(title=f"🃏 Blackjack - {ctx.author.name}", color=discord.Color.gold())
@@ -381,6 +382,7 @@ async def blackjack(ctx, bet: int):
     embed.add_field(name="Dealer's Hand", value=f"[{view.dealer_hand[0]}, ?]", inline=False)
 
     await ctx.send(embed=embed, view=view)
+
 
 
 # Store invite data before restarts
