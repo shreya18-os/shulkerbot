@@ -332,14 +332,22 @@ class BlackjackButton(discord.ui.View):
 
         conn = sqlite3.connect("economy.db")
         c = conn.cursor()
+
+        amount_change = 0
         if player_won:
-            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet * 2, self.player.id))
+            # Add the total payout (original bet + winnings)
+            amount_change = self.bet * 2
         elif player_won is None:
-            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (self.bet, self.player.id))  # Refund on tie
-        # No need to subtract on loss because it's already subtracted at start
+            # Refund the original bet amount on a tie
+            amount_change = self.bet
+        # If player_won is False (loss), amount_change remains 0.
+        # The initial bet was already deducted in the blackjack command.
+
+        if amount_change > 0:
+             c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (amount_change, self.player.id))
+
         conn.commit()
         conn.close()
-
 
 @bot.command()
 async def blackjack(ctx, bet: int):
@@ -655,7 +663,7 @@ async def top(ctx):
 @bot.command()
 async def slots(ctx, bet_amount: int):
     """Play a slot machine game! Bet your coins and try your luck."""
-    
+
     if bet_amount <= 0:
         return await ctx.send("⚠️ Bet amount must be greater than zero!")
 
@@ -665,24 +673,12 @@ async def slots(ctx, bet_amount: int):
     conn = sqlite3.connect("economy.db")
     cursor = conn.cursor()
 
-    # Ensure economy table exists
+    # Ensure economy table exists (already done at init_economy_db, but good to be safe)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS economy (
             user_id INTEGER PRIMARY KEY,
             balance INTEGER DEFAULT 500,
             last_daily INTEGER DEFAULT 0
-        )
-    """)
-
-    # Ensure slots history table exists
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS slots_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            bet_amount INTEGER,
-            result TEXT,
-            win_amount INTEGER,
-            timestamp INTEGER
         )
     """)
 
@@ -702,6 +698,10 @@ async def slots(ctx, bet_amount: int):
         conn.close()
         return await ctx.send("❌ You don't have enough coins to play!")
 
+    # Deduct the bet *before* the game logic
+    cursor.execute("UPDATE economy SET balance = balance - ? WHERE user_id = ?", (bet_amount, user_id))
+    conn.commit() # Commit the deduction immediately
+
     # Slot machine symbols
     symbols = ["🍎", "🍒", "🍋", "🍇", "🍊", "🍉", "🍓"]
     spin_result = [random.choice(symbols) for _ in range(3)]
@@ -711,30 +711,36 @@ async def slots(ctx, bet_amount: int):
     embed.add_field(name="Spin Result", value=f"**{spin_result[0]} | {spin_result[1]} | {spin_result[2]}**", inline=False)
 
     win_amount = 0
+    message_result = ""
+
+    # Determine win/loss and calculate amount to add back (includes the original bet on a win/tie)
+    amount_to_add = 0
     if spin_result[0] == spin_result[1] == spin_result[2]:  # Jackpot (All 3 match)
-        win_amount = bet_amount * 5
-        new_balance = balance + win_amount
-        embed.add_field(name="🎉 Jackpot!", value=f"You won **{win_amount} coins**!", inline=False)
+        win_amount = bet_amount * 5 # Payout is 5x the bet
+        amount_to_add = bet_amount + win_amount # Add back original bet + winnings
+        message_result = f"🎉 Jackpot! You won **{win_amount} coins**!"
     elif spin_result[0] == spin_result[1] or spin_result[1] == spin_result[2]:  # Small win (2 match)
-        win_amount = bet_amount * 2
-        new_balance = balance + win_amount
-        embed.add_field(name="✨ Small Win!", value=f"You won **{win_amount} coins**!", inline=False)
+        win_amount = bet_amount * 2 # Payout is 2x the bet
+        amount_to_add = bet_amount + win_amount # Add back original bet + winnings
+        message_result = f"✨ Small Win! You won **{win_amount} coins**!"
     else:  # Loss
-        new_balance = balance - bet_amount
-        embed.add_field(name="💀 You Lost!", value=f"You lost **{bet_amount} coins**.", inline=False)
+        win_amount = 0 # No winnings
+        amount_to_add = 0 # Nothing to add back, bet is already deducted
+        message_result = f"💀 You Lost! You lost **{bet_amount} coins**."
 
-    embed.add_field(name="💰 New Balance", value=f"**{new_balance} coins**", inline=False)
+    # Update balance based on the outcome (add the determined amount)
+    if amount_to_add > 0:
+         cursor.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (amount_to_add, user_id))
 
-    # Update balance
-    cursor.execute("UPDATE economy SET balance = ? WHERE user_id = ?", (new_balance, user_id))
 
-    # Save the game history
-    current_time = int(datetime.utcnow().timestamp())
-    result_str = f"{spin_result[0]}{spin_result[1]}{spin_result[2]}"
-    cursor.execute("INSERT INTO slots_history (user_id, bet_amount, result, win_amount, timestamp) VALUES (?, ?, ?, ?, ?)", 
-                  (user_id, bet_amount, result_str, win_amount, current_time))
+    embed.add_field(name="Result", value=message_result, inline=False)
 
-    conn.commit()
+    # Fetch the updated balance for the embed
+    cursor.execute("SELECT balance FROM economy WHERE user_id = ?", (user_id,))
+    updated_balance = cursor.fetchone()[0]
+    embed.add_field(name="💰 New Balance", value=f"**{updated_balance} coins**", inline=False)
+
+    conn.commit() # Commit the final balance update
     conn.close()
 
     await ctx.send(embed=embed)
