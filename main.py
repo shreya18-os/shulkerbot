@@ -275,11 +275,9 @@ class BlackjackButton(discord.ui.View):
         self.dealer_hand = [self.draw_card(), self.draw_card()]
 
     def draw_card(self):
-        # Ensure deck is not empty before drawing
         if not self.deck:
-             # This shouldn't happen with a standard deck, but as a safeguard:
-             self.deck = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11] * 4
-             random.shuffle(self.deck)
+            self.deck = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11] * 4
+            random.shuffle(self.deck)
         return self.deck.pop()
 
     def calculate_score(self, hand):
@@ -337,35 +335,26 @@ class BlackjackButton(discord.ui.View):
         conn = sqlite3.connect("economy.db")
         c = conn.cursor()
 
-        # Amount to potentially add back to the user's balance
-        # This accounts for the initial bet deduction in the blackjack command
         amount_to_add_back = 0
         if player_won:
-            # If won, add back the original bet AND the winnings (which is the bet amount)
             amount_to_add_back = self.bet * 2
         elif player_won is None:
-            # If tie, refund the original bet
             amount_to_add_back = self.bet
-        # If player_won is False (loss), amount_to_add_back remains 0.
-        # The initial bet deduction means their balance is already correct for a loss.
 
         if amount_to_add_back > 0:
-             c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (amount_to_add_back, self.player.id))
-             conn.commit() # Commit the balance change
+            c.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (amount_to_add_back, self.player.id))
+            conn.commit()
 
-        # Fetch the user's updated balance to display in the final embed
         c.execute("SELECT balance FROM economy WHERE user_id = ?", (self.player.id,))
         updated_balance = c.fetchone()[0]
-        conn.close() # Close connection after fetching balance
+        conn.close()
 
         embed.add_field(name="💰 New Balance", value=f"**{updated_balance} coins**", inline=False)
 
-        # Use edit_original_response for interactions that were initially deferred or followed up
         try:
-             await interaction.edit_original_response(embed=embed, view=None)
+            await interaction.edit_original_response(embed=embed, view=None)
         except discord.errors.NotFound:
-             # If the original message was deleted, send a new one
-             await interaction.followup.send(embed=embed, ephemeral=False) # Use followup for interaction context
+            await interaction.followup.send(embed=embed, ephemeral=False)
 
 @bot.command()
 async def blackjack(ctx, bet: int):
@@ -373,7 +362,6 @@ async def blackjack(ctx, bet: int):
     conn = sqlite3.connect("economy.db")
     c = conn.cursor()
 
-    # Ensure table exists
     c.execute("""
         CREATE TABLE IF NOT EXISTS economy (
             user_id INTEGER PRIMARY KEY,
@@ -382,7 +370,6 @@ async def blackjack(ctx, bet: int):
         )
     """)
 
-    # Fetch user's balance
     c.execute("SELECT balance FROM economy WHERE user_id=?", (user_id,))
     result = c.fetchone()
 
@@ -397,10 +384,9 @@ async def blackjack(ctx, bet: int):
         conn.close()
         return await ctx.send("❌ You don't have enough coins to bet!")
 
-    # Deduct the bet up front
     c.execute("UPDATE economy SET balance = balance - ? WHERE user_id = ?", (bet, user_id))
-    conn.commit() # Commit the deduction
-    conn.close() # Close the connection after the deduction
+    conn.commit()
+    conn.close()
 
     view = BlackjackButton(ctx.author, bet)
     embed = discord.Embed(title=f"🃏 Blackjack - {ctx.author.name}", color=discord.Color.gold())
