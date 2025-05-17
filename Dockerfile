@@ -5,28 +5,33 @@ FROM python:3.10-slim
 WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install essential tools and venv dependencies
+# Install system dependencies needed for building Python packages
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
     python3-venv \
     python3-dev \
     gcc \
-    git \
+    libffi-dev \
+    libssl-dev \
     curl \
+    git \
     ca-certificates && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create virtual environment
-RUN python3 -m venv /app/venv
-
-# Upgrade pip and install requirements
+# Copy requirements first to leverage Docker layer caching
 COPY requirements.txt .
-RUN /app/venv/bin/pip install --upgrade pip setuptools wheel && \
+
+# Create and activate virtual environment, install dependencies
+RUN python3 -m venv /app/venv && \
+    /app/venv/bin/pip install --upgrade pip setuptools wheel && \
     /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+# Copy the rest of the application code
 COPY . .
 
-# Run the application
-CMD ["/app/venv/bin/python", "main.py"]
+# Set environment path so CMD can find Python packages
+ENV PATH="/app/venv/bin:$PATH"
+
+# Start the application
+CMD ["python", "main.py"]
