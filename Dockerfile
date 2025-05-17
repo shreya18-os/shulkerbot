@@ -1,24 +1,32 @@
 # ----------- Python Only Stage -----------
 FROM python:3.10-slim
 
+# Set working directory
 WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install tools
+# Install essential tools and venv dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git curl ca-certificates && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    python3-venv \
+    python3-dev \
+    gcc \
+    git \
+    curl \
+    ca-certificates && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Python environment setup
-RUN python -m venv /app/venv
-RUN /app/venv/bin/pip install --upgrade pip setuptools wheel
+# Create virtual environment
+RUN python3 -m venv /app/venv
 
-# Copy requirements and install
+# Upgrade pip and install requirements
 COPY requirements.txt .
-RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
+RUN /app/venv/bin/pip install --upgrade pip setuptools wheel && \
+    /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-# Copy rest of the app
+# Copy the rest of the application
 COPY . .
 
-# Run your Python app
+# Run the application
 CMD ["/app/venv/bin/python", "main.py"]
