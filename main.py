@@ -547,6 +547,16 @@ async def on_message(message):
 
     # Note: bot.process_commands() is already called at the beginning of this function
 
+@bot.command(name='dm')
+@commands.is_owner()  # Optional: Only allow the bot owner to use this
+async def dm(ctx, user_id: int, *, message: str):
+    try:
+        user = await bot.fetch_user(user_id)
+        await user.send(message)
+        await ctx.message.add_reaction("✅")  # Confirmation (optional)
+    except Exception as e:
+        await ctx.send(f"❌ Failed to send DM: `{e}`")
+
 
 @bot.command()
 async def ping(ctx):
