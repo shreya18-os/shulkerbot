@@ -510,8 +510,20 @@ async def on_message(message):
     if message.author == bot.user:
         return  # Ignore messages from the bot itself
 
+    # ✅ If it's a DM, forward it to the owner
+    if isinstance(message.channel, discord.DMChannel):
+        try:
+            owner = await bot.fetch_user(1101467683083530331)
+            forward_message = f"📩 **DM from {message.author}** (`{message.author.id}`):\n{message.content}"
+            await owner.send(forward_message)
+        except Exception as e:
+            print(f"Error forwarding DM: {e}")
+        # Optionally return here if you don't want auto-responses to work in DMs
+        # return
+
     await bot.process_commands(message)  # Allow commands to work
-    # Auto-Response Dictionary
+
+    # ✅ Auto-Response Dictionary
     auto_responses = {
         "hello": "Hello there! 👋",
         "how are you?": "I'm just a bot, but I'm doing great! 😃",
@@ -525,11 +537,13 @@ async def on_message(message):
     # Convert message to lowercase for case-insensitive matching
     user_message = message.content.lower()
 
-    # Check if the message matches any auto-response
-    for key in auto_responses:
-        if key in user_message:
-            await message.channel.send(auto_responses[key])
-            break  # Stop checking after the first match
+    # ✅ Auto-response check (only in guild channels)
+    if message.guild:
+        for key in auto_responses:
+            if key in user_message:
+                await message.channel.send(auto_responses[key])
+                break
+
 
     # Note: bot.process_commands() is already called at the beginning of this function
 
